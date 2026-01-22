@@ -93,6 +93,11 @@ export const seenPostIdsStorage = storage.defineItem<string[]>(
   { fallback: [] }
 );
 
+export const onboardingCompleteStorage = storage.defineItem<boolean>(
+  'local:onboardingComplete',
+  { fallback: false }
+);
+
 export async function addLead(lead: Lead): Promise<void> {
   const leads = await leadsStorage.getValue();
   const existingIndex = leads.findIndex(l => l.postUrl === lead.postUrl);

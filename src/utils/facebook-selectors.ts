@@ -1,3 +1,5 @@
+import { logger } from './logger';
+
 export const FB_SELECTORS = {
   feedUnit: '[data-pagelet^="FeedUnit"]',
   postMessage: '[data-ad-preview="message"]',
@@ -13,7 +15,10 @@ export const FB_SELECTORS = {
 
 export function getPostId(element: Element): string | null {
   const article = element.closest('[role="article"]');
-  if (!article) return null;
+  if (!article) {
+    logger.selector.debug('No article element found for getPostId');
+    return null;
+  }
   
   const links = article.querySelectorAll('a[href*="/posts/"], a[href*="story_fbid"]');
   for (const link of links) {
@@ -21,16 +26,23 @@ export function getPostId(element: Element): string | null {
     if (href) {
       const postIdMatch = href.match(/posts\/(\d+)|story_fbid=(\d+)/);
       if (postIdMatch) {
-        return postIdMatch[1] || postIdMatch[2];
+        const postId = postIdMatch[1] || postIdMatch[2];
+        logger.selector.debug('Found post ID from URL', { postId, href });
+        return postId;
       }
     }
   }
   
   const dataId = article.getAttribute('data-id') || article.id;
-  if (dataId) return dataId;
+  if (dataId) {
+    logger.selector.debug('Found post ID from data attribute', { dataId });
+    return dataId;
+  }
   
   const textContent = article.textContent?.slice(0, 100) || '';
-  return `post-${hashString(textContent)}`;
+  const hashId = `post-${hashString(textContent)}`;
+  logger.selector.debug('Generated hash ID for post', { hashId });
+  return hashId;
 }
 
 export function getPostUrl(element: Element): string {
@@ -51,11 +63,16 @@ export function getPostUrl(element: Element): string {
   return window.location.href;
 }
 
-export function getAuthorInfo(element: Element): { name: string; profileUrl: string } {
+export function getAuthorInfo(element: Element): { authorName: string; authorProfileUrl: string } {
   const article = element.closest('[role="article"]');
-  if (!article) return { name: 'Unknown', profileUrl: '' };
+  if (!article) {
+    logger.selector.warn('No article element found for getAuthorInfo');
+    return { authorName: 'Unknown', authorProfileUrl: '' };
+  }
   
   const authorLinks = article.querySelectorAll('a[role="link"]');
+  logger.selector.debug('Found author link candidates', { count: authorLinks.length });
+  
   for (const link of authorLinks) {
     const href = link.getAttribute('href') || '';
     const isProfileLink = 
@@ -65,11 +82,13 @@ export function getAuthorInfo(element: Element): { name: string; profileUrl: str
     if (isProfileLink) {
       const name = link.textContent?.trim() || 'Unknown';
       const profileUrl = href.startsWith('/') ? `https://www.facebook.com${href}` : href;
-      return { name, profileUrl };
+      logger.selector.debug('Found author', { name, profileUrl });
+      return { authorName: name, authorProfileUrl: profileUrl };
     }
   }
   
-  return { name: 'Unknown', profileUrl: '' };
+  logger.selector.warn('Could not find author info');
+  return { authorName: 'Unknown', authorProfileUrl: '' };
 }
 
 export function getPostText(element: Element): string {

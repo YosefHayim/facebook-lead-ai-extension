@@ -1,9 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { AIAnalysis, IntentType, Persona } from '../../types';
+import { logger } from '../../utils/logger';
 
 let genAI: GoogleGenerativeAI | null = null;
 
 export function initGemini(apiKey: string): void {
+  logger.api.info('Gemini SDK initialized');
   genAI = new GoogleGenerativeAI(apiKey);
 }
 
@@ -39,10 +41,12 @@ export async function classifyIntent(
   persona: Persona
 ): Promise<AIAnalysis> {
   if (!genAI) {
+    logger.api.error('Gemini not initialized');
     throw new Error('Gemini not initialized. Call initGemini() first.');
   }
   
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const startTime = Date.now();
   
   const prompt = `${INTENT_CLASSIFICATION_PROMPT}
 
@@ -52,11 +56,21 @@ Context - Keywords to deprioritize: ${persona.negativeKeywords.join(', ')}
 Post to classify:
 "${postText.slice(0, 1500)}"`;
   
+  logger.logApiRequest('gemini', 'generateContent/classifyIntent', { 
+    model: 'gemini-1.5-flash',
+    promptLength: prompt.length 
+  });
+  
   const result = await model.generateContent(prompt);
   const response = result.response.text();
   
+  logger.logApiResponse('gemini', 'generateContent/classifyIntent', { 
+    responseLength: response.length 
+  }, Date.now() - startTime);
+  
   const jsonMatch = response.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
+    logger.api.error('Invalid AI response format - no JSON found', { response: response.slice(0, 200) });
     throw new Error('Invalid AI response format');
   }
   
@@ -90,10 +104,12 @@ export async function generateReply(
   persona: Persona
 ): Promise<string> {
   if (!genAI) {
+    logger.api.error('Gemini not initialized');
     throw new Error('Gemini not initialized. Call initGemini() first.');
   }
   
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const startTime = Date.now();
   
   const toneGuide = {
     professional: 'formal but approachable',
@@ -117,6 +133,18 @@ Original post:
 
 Generate a helpful reply:`;
   
+  logger.logApiRequest('gemini', 'generateContent/generateReply', { 
+    model: 'gemini-1.5-flash',
+    intent,
+    promptLength: prompt.length 
+  });
+  
   const result = await model.generateContent(prompt);
-  return result.response.text().trim();
+  const reply = result.response.text().trim();
+  
+  logger.logApiResponse('gemini', 'generateContent/generateReply', { 
+    replyLength: reply.length 
+  }, Date.now() - startTime);
+  
+  return reply;
 }

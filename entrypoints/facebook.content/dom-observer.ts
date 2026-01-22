@@ -11,6 +11,7 @@ import {
   incrementSessionUsage 
 } from '../../src/lib/storage';
 import { classifyPostIntent, generatePostReply } from '../../src/lib/ai';
+import { logger } from '../../src/utils/logger';
 
 const rateLimiter = createRateLimiter(5, 60000);
 const seenPosts = new Set<string>();
@@ -23,15 +24,19 @@ export async function manualScanPage(): Promise<ScanResult> {
     timestamp: Date.now(),
   };
 
+  logger.logScan('start', { url: window.location.href });
+
   try {
     const limitCheck = await checkSessionLimits();
     if (!limitCheck.canProceed) {
+      logger.scan.warn('Session limit reached', { reason: limitCheck.reason });
       result.errors.push(limitCheck.reason || 'Session limit reached');
       return result;
     }
 
     const settings = await settingsStorage.getValue();
     if (!settings.isEnabled) {
+      logger.scan.warn('Extension is disabled');
       result.errors.push('Extension is disabled');
       return result;
     }
@@ -43,7 +48,11 @@ export async function manualScanPage(): Promise<ScanResult> {
     const articles = document.querySelectorAll(FB_SELECTORS.postContainer);
     const postElements = [...new Set([...feedUnits, ...articles])];
 
+    logger.logSelector(feedUnits.length > 0 ? 'found' : 'not_found', FB_SELECTORS.feedUnit, feedUnits.length);
+    logger.logSelector(articles.length > 0 ? 'found' : 'not_found', FB_SELECTORS.postContainer, articles.length);
+
     result.postsFound = postElements.length;
+    logger.scan.info(`Found ${postElements.length} post elements`, { seenCount: seenPosts.size });
 
     for (const element of postElements) {
       const postId = getPostId(element);
@@ -52,7 +61,10 @@ export async function manualScanPage(): Promise<ScanResult> {
       seenPosts.add(postId);
 
       const postText = getPostText(element);
-      if (postText.length < 30) continue;
+      if (postText.length < 30) {
+        logger.selector.debug('Post text too short, skipping', { postId, length: postText.length });
+        continue;
+      }
 
       const parsedPost: ParsedPost = {
         id: postId,
@@ -63,8 +75,18 @@ export async function manualScanPage(): Promise<ScanResult> {
         element: element as HTMLElement,
       };
 
+      logger.selector.debug('Parsed post', { 
+        postId, 
+        authorName: parsedPost.authorName, 
+        textLength: postText.length,
+        hasUrl: !!parsedPost.postUrl 
+      });
+
       const shouldProcess = await shouldProcessPost(parsedPost);
-      if (!shouldProcess) continue;
+      if (!shouldProcess) {
+        logger.scan.debug('Post filtered out by keywords', { postId });
+        continue;
+      }
 
       await rateLimiter.consume();
       await randomDelay(300, 800);
@@ -72,7 +94,10 @@ export async function manualScanPage(): Promise<ScanResult> {
       try {
         if (settings.autoAnalyze) {
           const wasAdded = await analyzeAndSavePost(parsedPost, settings.minLeadScore);
-          if (wasAdded) result.leadsDetected++;
+          if (wasAdded) {
+            result.leadsDetected++;
+            logger.scan.info('Lead detected and saved', { postId, authorName: parsedPost.authorName });
+          }
         } else {
           await savePostWithoutAnalysis(parsedPost);
           result.leadsDetected++;
@@ -81,15 +106,18 @@ export async function manualScanPage(): Promise<ScanResult> {
         await incrementSessionUsage('post');
         notifyNewLead(parsedPost);
       } catch (error) {
+        logger.scan.error('Failed to process post', { postId, error });
         result.errors.push(`Failed to process post ${postId}: ${error}`);
       }
     }
 
     await seenPostIdsStorage.setValue([...seenPosts].slice(-1000));
   } catch (error) {
+    logger.logScan('error', { error });
     result.errors.push(`Scan failed: ${error}`);
   }
 
+  logger.logScan('complete', result);
   return result;
 }
 
@@ -199,15 +227,39 @@ async function shouldProcessPost(post: ParsedPost): Promise<boolean> {
 async function analyzeAndSavePost(post: ParsedPost, minLeadScore: number): Promise<boolean> {
   try {
     const persona = await getActivePersona();
-    if (!persona) return false;
+    if (!persona) {
+      logger.scan.warn('No active persona found');
+      return false;
+    }
+    
+    logger.ai.info('Analyzing post', { postId: post.id, personaId: persona.id });
     
     const analysis = await classifyPostIntent(post.text, persona);
     
-    if (analysis.leadScore < minLeadScore) return false;
-    if (analysis.intent === 'irrelevant' || analysis.intent === 'selling') return false;
+    logger.ai.debug('Analysis result', { 
+      postId: post.id, 
+      intent: analysis.intent, 
+      leadScore: analysis.leadScore,
+      confidence: analysis.confidence 
+    });
+    
+    if (analysis.leadScore < minLeadScore) {
+      logger.scan.debug('Lead score below threshold', { 
+        postId: post.id, 
+        score: analysis.leadScore, 
+        threshold: minLeadScore 
+      });
+      return false;
+    }
+    
+    if (analysis.intent === 'irrelevant' || analysis.intent === 'selling') {
+      logger.scan.debug('Post filtered by intent', { postId: post.id, intent: analysis.intent });
+      return false;
+    }
     
     let draftReply: string | undefined;
     if (analysis.intent === 'seeking_service' || analysis.intent === 'recommendation' || analysis.intent === 'complaining') {
+      logger.ai.info('Generating reply for high-intent post', { postId: post.id, intent: analysis.intent });
       draftReply = await generatePostReply(post.text, analysis, persona);
     }
     
@@ -229,9 +281,16 @@ async function analyzeAndSavePost(post: ParsedPost, minLeadScore: number): Promi
       createdAt: Date.now(),
     });
     
+    logger.storage.info('Lead saved', { 
+      postId: post.id, 
+      intent: analysis.intent, 
+      leadScore: analysis.leadScore,
+      hasReply: !!draftReply 
+    });
+    
     return true;
   } catch (error) {
-    console.error('[LeadScout] Error analyzing post:', error);
+    logger.scan.error('Error analyzing post', { postId: post.id, error });
     return false;
   }
 }
