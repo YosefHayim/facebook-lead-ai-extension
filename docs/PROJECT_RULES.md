@@ -594,14 +594,119 @@ refactor/3.4-card-component
 
 ## Project-Specific Patterns
 
-<!-- 
-  ADD YOUR OWN PATTERNS HERE
-  
-  As you discover patterns in your codebase:
-  1. Document them here
-  2. Include DO and DON'T examples
-  3. Reference actual files in your codebase
--->
+---
+
+### MANDATORY: Code Size & Reusability Rules
+
+These rules are **NON-NEGOTIABLE** for this project:
+
+#### 1. Component File Size Limit: 200 Lines MAX
+
+```typescript
+// ❌ DON'T: Components exceeding 200 lines
+// src/components/MassiveComponent.tsx (500+ lines)
+export function MassiveComponent() {
+  // Too much logic, too many responsibilities
+}
+
+// ✅ DO: Split into smaller, focused components
+// src/components/UserProfile/UserProfile.tsx (~80 lines)
+// src/components/UserProfile/UserAvatar.tsx (~40 lines)
+// src/components/UserProfile/UserStats.tsx (~60 lines)
+export function UserProfile() {
+  return (
+    <>
+      <UserAvatar />
+      <UserStats />
+    </>
+  );
+}
+```
+
+**When a component exceeds 200 lines:**
+1. **STOP** - Do not continue adding code
+2. **ANALYZE** - Identify logical sections that can be extracted
+3. **EXTRACT** - Create child components, custom hooks, or utility functions
+4. **REFACTOR** - Move extracted code to separate files
+
+#### 2. No Duplicate Code - Everything is Reusable
+
+```typescript
+// ❌ DON'T: Duplicate logic across files
+// File A:
+const formatDate = (date: number) => new Date(date).toLocaleDateString();
+
+// File B (same logic duplicated):
+const formatDate = (date: number) => new Date(date).toLocaleDateString();
+
+// ✅ DO: Extract to shared utility
+// src/utils/formatters.ts
+export const formatDate = (date: number) => new Date(date).toLocaleDateString();
+
+// File A & B:
+import { formatDate } from '../utils/formatters';
+```
+
+#### 3. Extract Reusable Hooks
+
+```typescript
+// ❌ DON'T: Repeat stateful logic in multiple components
+function ComponentA() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => { /* fetch logic */ }, []);
+}
+
+function ComponentB() {
+  const [data, setData] = useState([]);  // Same pattern!
+  const [loading, setLoading] = useState(false);
+  useEffect(() => { /* same fetch logic */ }, []);
+}
+
+// ✅ DO: Extract to custom hook
+// src/hooks/useFetch.ts
+export function useFetch<T>(url: string) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  // ... fetch logic
+  return { data, loading };
+}
+
+// Components use the hook:
+function ComponentA() {
+  const { data, loading } = useFetch('/api/items');
+}
+```
+
+#### 4. Extract Reusable Methods/Functions
+
+```typescript
+// ❌ DON'T: Inline complex logic
+function handleSubmit() {
+  const isValid = email.includes('@') && email.length > 5 && password.length >= 8;
+  // ...
+}
+
+// ✅ DO: Extract to utility function
+// src/utils/validation.ts
+export const isValidEmail = (email: string) => email.includes('@') && email.length > 5;
+export const isValidPassword = (pwd: string) => pwd.length >= 8;
+
+// Component:
+import { isValidEmail, isValidPassword } from '../utils/validation';
+function handleSubmit() {
+  const isValid = isValidEmail(email) && isValidPassword(password);
+}
+```
+
+#### Checklist Before Creating New Code
+
+- [ ] Does similar code already exist? → **REUSE IT**
+- [ ] Will this component exceed 200 lines? → **SPLIT IT**
+- [ ] Is this logic used in 2+ places? → **EXTRACT TO UTILITY/HOOK**
+- [ ] Can this method be reused elsewhere? → **MOVE TO SHARED LOCATION**
+
+---
 
 ### Example: Form Handling
 
