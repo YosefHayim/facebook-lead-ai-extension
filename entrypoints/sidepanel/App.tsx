@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, Users, User, Settings } from 'lucide-react';
+import { TrendingUp, Users, User, Settings, Github, Coffee, Linkedin, Heart } from 'lucide-react';
 import { useSidepanelData } from '../../src/hooks/useSidepanelData';
 import { Header, ScanButton, LeadsTab, GroupsTab, PersonasTab, SettingsTab } from './components';
 
@@ -40,6 +40,7 @@ export function App() {
           />
         )}
       </main>
+      <Footer />
     </div>
   );
 }
@@ -76,5 +77,56 @@ function TabNavigation({ activeTab, setActiveTab }: TabNavigationProps) {
         ))}
       </div>
     </nav>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="bg-white border-t border-gray-200 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <span>Made with</span>
+          <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+          <span>by</span>
+          <a
+            href="https://github.com/YosefHayim"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-gray-700 hover:text-blue-600"
+          >
+            Yosef
+          </a>
+        </div>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://github.com/YosefHayim"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-gray-700 transition-colors"
+            title="GitHub"
+          >
+            <Github className="w-4 h-4" />
+          </a>
+          <a
+            href="https://buymeacoffee.com/yosefhayim"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-amber-500 transition-colors"
+            title="Buy me a coffee"
+          >
+            <Coffee className="w-4 h-4" />
+          </a>
+          <a
+            href="https://www.linkedin.com/in/yosef-hayim-sabag"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-blue-600 transition-colors"
+            title="LinkedIn"
+          >
+            <Linkedin className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+    </footer>
   );
 }

@@ -20,6 +20,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", ".wxt/**/*"],
+  "include": ["src/**/*", "entrypoints/**/*", ".wxt/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
