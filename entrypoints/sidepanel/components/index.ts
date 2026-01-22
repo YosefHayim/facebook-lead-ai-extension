@@ -7,3 +7,4 @@ export { SettingsTab } from './SettingsTab';
 export { LeadCard } from './LeadCard';
 export { LeadCardExpanded } from './LeadCardExpanded';
 export { GroupCard } from './GroupCard';
+export { Onboarding } from './Onboarding';

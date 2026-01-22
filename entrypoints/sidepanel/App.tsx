@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, Users, User, Settings, Github, Coffee, Linkedin, Heart } from 'lucide-react';
 import { useSidepanelData } from '../../src/hooks/useSidepanelData';
-import { Header, ScanButton, LeadsTab, GroupsTab, PersonasTab, SettingsTab } from './components';
+import { onboardingCompleteStorage } from '../../src/lib/storage';
+import { Header, ScanButton, LeadsTab, GroupsTab, PersonasTab, SettingsTab, Onboarding } from './components';
 
 type Tab = 'leads' | 'groups' | 'personas' | 'settings';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<Tab>('leads');
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
   const {
     leads,
     personas,
@@ -18,6 +20,25 @@ export function App() {
     apiKey,
     setApiKey,
   } = useSidepanelData();
+
+  useEffect(() => {
+    onboardingCompleteStorage.getValue().then(setOnboardingComplete);
+  }, []);
+
+  const isLoadingOnboardingState = onboardingComplete === null;
+  const needsOnboarding = onboardingComplete === false;
+
+  if (isLoadingOnboardingState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-pulse text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (needsOnboarding) {
+    return <Onboarding onComplete={() => setOnboardingComplete(true)} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
