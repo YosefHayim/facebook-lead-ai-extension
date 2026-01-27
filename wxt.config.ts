@@ -20,9 +20,21 @@ export default defineConfig({
     side_panel: {
       default_path: 'sidepanel.html',
     },
+    icons: {
+      16: 'icon/icon-16.png',
+      32: 'icon/icon-32.png',
+      48: 'icon/icon-48.png',
+      128: 'icon/icon-128.png',
+    },
     action: {
       default_title: 'LeadScout AI',
       default_popup: 'popup.html',
+      default_icon: {
+        16: 'icon/icon-16.png',
+        32: 'icon/icon-32.png',
+        48: 'icon/icon-48.png',
+        128: 'icon/icon-128.png',
+      },
     },
     options_ui: {
       page: 'options.html',

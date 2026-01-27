@@ -93,8 +93,8 @@ function GroupSearchSection({
   const quickSearchTerms = ['need help', 'looking for', 'recommendations', 'any suggestions', 'who can'];
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <h3 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+    <div className="bg-card rounded-xl border border-border p-4">
+      <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
         <Search className="w-4 h-4" />
         Search in Groups
       </h3>
@@ -105,7 +105,7 @@ function GroupSearchSection({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search keywords (e.g., 'need help with website')"
-            className="flex-1 border border-gray-200 rounded-md px-3 py-2 text-sm"
+            className="flex-1 border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm placeholder:text-foreground-muted"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && selectedGroup) onSearchInGroup(selectedGroup);
             }}
@@ -113,7 +113,7 @@ function GroupSearchSection({
           <select
             value={selectedGroupForSearch || ''}
             onChange={(e) => setSelectedGroupForSearch(e.target.value || null)}
-            className="border border-gray-200 rounded-md px-3 py-2 text-sm bg-white min-w-[140px]"
+            className="border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm min-w-[140px]"
           >
             <option value="">Select group</option>
             {groups.filter((g) => g.isActive).map((g) => (
@@ -124,16 +124,16 @@ function GroupSearchSection({
         <button
           onClick={() => selectedGroup && onSearchInGroup(selectedGroup)}
           disabled={!searchQuery.trim() || !selectedGroupForSearch}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-500 text-white text-sm rounded-md hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ExternalLink className="w-4 h-4" />
           Search in Facebook Group
         </button>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-foreground-muted">
           Opens Facebook's native search. Click "Scan This Page" on search results to find leads.
         </p>
-        <div className="border-t border-gray-100 pt-3">
-          <p className="text-xs text-gray-500 mb-2">Quick searches:</p>
+        <div className="border-t border-border pt-3">
+          <p className="text-xs text-foreground-muted mb-2">Quick searches:</p>
           <div className="flex flex-wrap gap-1.5">
             {quickSearchTerms.map((q) => (
               <button
@@ -145,7 +145,7 @@ function GroupSearchSection({
                     setSearchQuery(q);
                   }
                 }}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                className="text-xs px-2 py-1 bg-card-elevated text-foreground-secondary rounded hover:bg-border"
               >
                 {q}
               </button>
@@ -171,15 +171,15 @@ function AddGroupForm({
   newGroupUrl, setNewGroupUrl, newGroupName, setNewGroupName, newGroupCategory, setNewGroupCategory, onAddGroup,
 }: AddGroupFormProps) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <h3 className="font-medium text-gray-900 mb-3">Add Group</h3>
+    <div className="bg-card rounded-xl border border-border p-4">
+      <h3 className="font-medium text-foreground mb-3">Add Group</h3>
       <div className="space-y-3">
         <input
           type="text"
           value={newGroupUrl}
           onChange={(e) => setNewGroupUrl(e.target.value)}
           placeholder="Facebook group URL"
-          className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm"
+          className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm placeholder:text-foreground-muted"
         />
         <div className="flex gap-2">
           <input
@@ -187,12 +187,12 @@ function AddGroupForm({
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
             placeholder="Group name"
-            className="flex-1 border border-gray-200 rounded-md px-3 py-2 text-sm"
+            className="flex-1 border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm placeholder:text-foreground-muted"
           />
           <select
             value={newGroupCategory}
             onChange={(e) => setNewGroupCategory(e.target.value)}
-            className="border border-gray-200 rounded-md px-3 py-2 text-sm bg-white"
+            className="border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm"
           >
             <option value="general">General</option>
             <option value="marketing">Marketing</option>
@@ -204,7 +204,7 @@ function AddGroupForm({
         <button
           onClick={onAddGroup}
           disabled={!newGroupUrl || !newGroupName}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
           Add Group
@@ -216,9 +216,9 @@ function AddGroupForm({
 
 function EmptyGroupsState() {
   return (
-    <div className="text-center py-8 text-gray-500">
-      <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-      <p>No groups added</p>
+    <div className="text-center py-8 text-foreground-muted">
+      <Users className="w-12 h-12 mx-auto mb-3 text-foreground-muted" />
+      <p className="text-foreground-secondary">No groups added</p>
       <p className="text-sm mt-1">Add Facebook groups to track</p>
     </div>
   );

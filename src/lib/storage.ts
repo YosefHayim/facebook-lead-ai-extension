@@ -1,5 +1,5 @@
 import { storage } from 'wxt/storage';
-import type { Persona, Lead, ExtensionSettings, UsageData, WatchedGroup, SessionLimits, ResponseTracking, LeadFeedback } from '../types';
+import type { Persona, Lead, ExtensionSettings, UsageData, WatchedGroup, SessionLimits, ResponseTracking, LeadFeedback, AutomationSettings, AutomationState, ScheduledTask, LeadContextIntelligence } from '../types';
 
 export const personasStorage = storage.defineItem<Persona[]>(
   'local:personas',
@@ -288,4 +288,89 @@ export async function getNextGroupToVisit(): Promise<WatchedGroup | null> {
   
   activeGroups.sort((a, b) => (a.lastVisited || 0) - (b.lastVisited || 0));
   return activeGroups[0];
+}
+
+export const automationSettingsStorage = storage.defineItem<AutomationSettings>(
+  'local:automationSettings',
+  {
+    fallback: {
+      enabled: false,
+      scanIntervalMinutes: 30,
+      groupsPerCycle: 3,
+      delayMinSeconds: 5,
+      delayMaxSeconds: 15,
+      isPro: false,
+    },
+    version: 1,
+  }
+);
+
+export const automationStateStorage = storage.defineItem<AutomationState>(
+  'local:automationState',
+  {
+    fallback: {
+      isRunning: false,
+      queue: [],
+      completedCount: 0,
+      failedCount: 0,
+    },
+    version: 1,
+  }
+);
+
+export async function addScheduledTask(task: Omit<ScheduledTask, 'id' | 'createdAt'>): Promise<ScheduledTask> {
+  const state = await automationStateStorage.getValue();
+  const newTask: ScheduledTask = {
+    ...task,
+    id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    createdAt: Date.now(),
+  };
+  state.queue.push(newTask);
+  await automationStateStorage.setValue(state);
+  return newTask;
+}
+
+export async function updateScheduledTask(taskId: string, updates: Partial<ScheduledTask>): Promise<void> {
+  const state = await automationStateStorage.getValue();
+  const taskIndex = state.queue.findIndex(t => t.id === taskId);
+  if (taskIndex >= 0) {
+    state.queue[taskIndex] = { ...state.queue[taskIndex], ...updates };
+    await automationStateStorage.setValue(state);
+  }
+}
+
+export async function removeScheduledTask(taskId: string): Promise<void> {
+  const state = await automationStateStorage.getValue();
+  state.queue = state.queue.filter(t => t.id !== taskId);
+  await automationStateStorage.setValue(state);
+}
+
+export async function clearCompletedTasks(): Promise<void> {
+  const state = await automationStateStorage.getValue();
+  state.queue = state.queue.filter(t => t.status === 'pending' || t.status === 'running');
+  await automationStateStorage.setValue(state);
+}
+
+export async function getNextScheduledTask(): Promise<ScheduledTask | null> {
+  const state = await automationStateStorage.getValue();
+  const now = Date.now();
+  const pendingTasks = state.queue
+    .filter(t => t.status === 'pending' && t.scheduledAt <= now)
+    .sort((a, b) => a.scheduledAt - b.scheduledAt);
+  return pendingTasks[0] || null;
+}
+
+export async function updateLeadLCI(leadId: string, lci: LeadContextIntelligence): Promise<void> {
+  const leads = await leadsStorage.getValue();
+  const index = leads.findIndex(l => l.id === leadId);
+  
+  if (index >= 0) {
+    leads[index].lci = lci;
+    await leadsStorage.setValue(leads);
+  }
+}
+
+export async function getLeadById(leadId: string): Promise<Lead | null> {
+  const leads = await leadsStorage.getValue();
+  return leads.find(l => l.id === leadId) || null;
 }

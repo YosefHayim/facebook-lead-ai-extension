@@ -8,33 +8,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-          950: '#082f49',
-        },
+        // Shadcn-like dark theme (zinc-based)
+        background: '#09090B',
+        'background-secondary': '#18181B',
+        card: '#27272A',
+        'card-elevated': '#3F3F46',
+        border: '#27272A',
+        'border-subtle': '#1F1F23',
+        foreground: '#FAFAFA',
+        'foreground-secondary': '#A1A1AA',
+        'foreground-muted': '#71717A',
+        accent: '#FAFAFA',
+        'accent-hover': '#E4E4E7',
+        // Keep some semantic colors (muted for shadcn style)
         success: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
+          DEFAULT: '#A1A1AA',
+          bg: '#18181B',
         },
         warning: {
-          50: '#fffbeb',
-          500: '#f59e0b',
-          600: '#d97706',
+          DEFAULT: '#A1A1AA',
+          bg: '#18181B',
         },
         danger: {
-          50: '#fef2f2',
-          500: '#ef4444',
-          600: '#dc2626',
+          DEFAULT: '#A1A1AA',
+          bg: '#18181B',
         },
       },
       animation: {

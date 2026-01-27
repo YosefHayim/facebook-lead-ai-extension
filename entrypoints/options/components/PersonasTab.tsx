@@ -53,12 +53,12 @@ export function PersonasTab({ personas, activePersonaId, setPersonas, setActiveP
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-medium text-gray-900">Personas</h2>
-          <p className="text-sm text-gray-500">Configure different profiles for various use cases</p>
+          <h2 className="text-lg font-medium text-foreground">Personas</h2>
+          <p className="text-sm text-foreground-muted">Configure different profiles for various use cases</p>
         </div>
         <button
           onClick={handleAddPersona}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-accent-hover"
         >
           <Plus className="w-4 h-4" />
           Add Persona
@@ -92,8 +92,8 @@ interface PersonaEditorProps {
 function PersonaEditor({ persona, isActive, onUpdate, onDelete, onSetActive }: PersonaEditorProps) {
   return (
     <div
-      className={`bg-white rounded-xl border p-6 ${
-        isActive ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200'
+      className={`bg-card rounded-xl border p-6 ${
+        isActive ? 'border-foreground-muted' : 'border-border'
       }`}
     >
       <div className="flex items-start justify-between mb-4">
@@ -102,24 +102,24 @@ function PersonaEditor({ persona, isActive, onUpdate, onDelete, onSetActive }: P
             type="text"
             value={persona.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
-            className="text-lg font-medium text-gray-900 bg-transparent border-none p-0 focus:ring-0 w-full"
+            className="text-lg font-medium text-foreground bg-transparent border-none p-0 focus:ring-0 focus:outline-none w-full"
           />
           <input
             type="text"
             value={persona.role}
             onChange={(e) => onUpdate({ role: e.target.value })}
-            className="text-sm text-gray-500 bg-transparent border-none p-0 focus:ring-0 w-full mt-1"
+            className="text-sm text-foreground-muted bg-transparent border-none p-0 focus:ring-0 focus:outline-none w-full mt-1"
             placeholder="Role description"
           />
         </div>
         <div className="flex items-center gap-2">
           {!isActive && (
-            <button onClick={onSetActive} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <button onClick={onSetActive} className="text-sm text-foreground-secondary hover:text-foreground font-medium">
               Set Active
             </button>
           )}
           {persona.id !== 'default' && (
-            <button onClick={onDelete} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50">
+            <button onClick={onDelete} className="p-2 text-foreground-muted hover:text-red-400 rounded-lg hover:bg-card-elevated">
               <Trash2 className="w-4 h-4" />
             </button>
           )}
@@ -128,23 +128,23 @@ function PersonaEditor({ persona, isActive, onUpdate, onDelete, onSetActive }: P
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Keywords (comma-separated)</label>
+          <label className="block text-xs font-medium text-foreground-muted mb-1">Keywords (comma-separated)</label>
           <input
             type="text"
             value={persona.keywords.join(', ')}
             onChange={(e) =>
               onUpdate({ keywords: e.target.value.split(',').map((k) => k.trim()).filter(Boolean) })
             }
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm placeholder:text-foreground-muted focus:outline-none focus:border-foreground-muted"
             placeholder="looking for, need help, recommend"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">AI Tone</label>
+          <label className="block text-xs font-medium text-foreground-muted mb-1">AI Tone</label>
           <select
             value={persona.aiTone}
             onChange={(e) => onUpdate({ aiTone: e.target.value as Persona['aiTone'] })}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-border bg-card-elevated text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-foreground-muted"
           >
             <option value="professional">Professional</option>
             <option value="casual">Casual</option>
@@ -155,11 +155,11 @@ function PersonaEditor({ persona, isActive, onUpdate, onDelete, onSetActive }: P
       </div>
 
       <div className="mt-4">
-        <label className="block text-xs font-medium text-gray-500 mb-1">Value Proposition</label>
+        <label className="block text-xs font-medium text-foreground-muted mb-1">Value Proposition</label>
         <textarea
           value={persona.valueProposition}
           onChange={(e) => onUpdate({ valueProposition: e.target.value })}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
+          className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm resize-none placeholder:text-foreground-muted focus:outline-none focus:border-foreground-muted"
           rows={2}
           placeholder="Describe how you help your clients..."
         />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, MessageCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Send, MessageCircle, ThumbsUp, ThumbsDown, Check } from 'lucide-react';
 import { updateLeadStatus, updateLeadResponse, updateLeadFeedback } from '../../../src/lib/storage';
 import type { Lead, LeadFeedback } from '../../../src/types';
 import { formatDate } from '../../../src/utils/formatters';
@@ -10,9 +10,20 @@ interface LeadCardProps {
   copiedId: string | null;
   onCopyReply: (lead: Lead) => void;
   onStatusChange: (leadId: string, status: Lead['status']) => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function LeadCard({ lead, copiedId, onCopyReply, onStatusChange }: LeadCardProps) {
+export function LeadCard({ 
+  lead, 
+  copiedId, 
+  onCopyReply, 
+  onStatusChange,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelect,
+}: LeadCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const handleMarkResponded = async (e: React.MouseEvent) => {
@@ -31,18 +42,45 @@ export function LeadCard({ lead, copiedId, onCopyReply, onStatusChange }: LeadCa
     await updateLeadFeedback(lead.id, { quality, givenAt: Date.now() });
   };
 
+  const handleClick = () => {
+    if (isSelectionMode && onToggleSelect) {
+      onToggleSelect(lead.id);
+    } else {
+      setExpanded(!expanded);
+    }
+  };
+
+  const borderClass = isSelected 
+    ? 'border-foreground ring-2 ring-card-elevated' 
+    : 'border-border';
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="p-4 cursor-pointer hover:bg-gray-50" onClick={() => setExpanded(!expanded)}>
-        <LeadCardHeader lead={lead} />
-        <p className="text-sm text-gray-600 line-clamp-2">{lead.postText}</p>
-        <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-          <span className="capitalize">{lead.intent.replace('_', ' ')}</span>
-          <span>-</span>
-          <span>{formatDate(lead.createdAt)}</span>
+    <div className={`bg-card rounded-xl border overflow-hidden ${borderClass}`}>
+      <div className="p-4 cursor-pointer hover:bg-card-elevated flex gap-3" onClick={handleClick}>
+        {isSelectionMode && (
+          <div className="flex items-start pt-1">
+            <div 
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                isSelected 
+                  ? 'bg-foreground border-foreground' 
+                  : 'border-foreground-muted hover:border-foreground-secondary'
+              }`}
+            >
+              {isSelected && <Check className="w-3 h-3 text-background" />}
+            </div>
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <LeadCardHeader lead={lead} />
+          <p className="text-sm text-foreground-secondary line-clamp-2">{lead.postText}</p>
+          <div className="flex items-center gap-2 mt-2 text-xs text-foreground-muted">
+            <span className="capitalize">{lead.intent.replace('_', ' ')}</span>
+            <span>-</span>
+            <span>{formatDate(lead.createdAt)}</span>
+          </div>
         </div>
       </div>
-      {expanded && (
+      {expanded && !isSelectionMode && (
         <LeadCardExpanded
           lead={lead}
           copiedId={copiedId}
@@ -62,13 +100,13 @@ function LeadCardHeader({ lead }: { lead: Lead }) {
     <div className="flex items-start justify-between mb-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-900 truncate">{lead.authorName}</span>
+          <span className="font-medium text-foreground truncate">{lead.authorName}</span>
           <LeadScoreBadge score={lead.leadScore} />
-          {lead.responseTracking?.responded && <Send className="w-3 h-3 text-blue-500" title="Responded" />}
-          {lead.responseTracking?.gotReply && <MessageCircle className="w-3 h-3 text-green-500" title="Got reply" />}
+          {lead.responseTracking?.responded && <span title="Responded"><Send className="w-3 h-3 text-foreground-secondary" /></span>}
+          {lead.responseTracking?.gotReply && <span title="Got reply"><MessageCircle className="w-3 h-3 text-foreground-secondary" /></span>}
           <FeedbackIcon feedback={lead.feedback} />
         </div>
-        {lead.groupName && <p className="text-xs text-gray-500 mt-0.5">{lead.groupName}</p>}
+        {lead.groupName && <p className="text-xs text-foreground-muted mt-0.5">{lead.groupName}</p>}
       </div>
       <StatusBadge status={lead.status} />
     </div>
@@ -76,18 +114,16 @@ function LeadCardHeader({ lead }: { lead: Lead }) {
 }
 
 function LeadScoreBadge({ score }: { score: number }) {
-  const colorClass = score >= 70 ? 'bg-green-50 text-green-600' : score >= 50 ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-600';
-  return <span className={`text-xs px-1.5 py-0.5 rounded-full ${colorClass}`}>{score}%</span>;
+  return <span className="text-xs px-1.5 py-0.5 rounded-full bg-card-elevated text-foreground-secondary">{score}%</span>;
 }
 
 function StatusBadge({ status }: { status: Lead['status'] }) {
-  const colorClass = status === 'new' ? 'bg-blue-50 text-blue-600' : status === 'contacted' ? 'bg-amber-50 text-amber-600' : status === 'converted' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600';
-  return <span className={`text-xs px-2 py-1 rounded-full ${colorClass}`}>{status}</span>;
+  return <span className="text-xs px-2 py-1 rounded-full bg-card-elevated text-foreground-secondary uppercase">{status}</span>;
 }
 
 function FeedbackIcon({ feedback }: { feedback?: LeadFeedback }) {
   if (!feedback) return null;
-  if (feedback.quality === 'good') return <ThumbsUp className="w-3 h-3 text-green-500" />;
-  if (feedback.quality === 'bad') return <ThumbsDown className="w-3 h-3 text-red-500" />;
+  if (feedback.quality === 'good') return <ThumbsUp className="w-3 h-3 text-foreground-secondary" />;
+  if (feedback.quality === 'bad') return <ThumbsDown className="w-3 h-3 text-foreground-secondary" />;
   return null;
 }

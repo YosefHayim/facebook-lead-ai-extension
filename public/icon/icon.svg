@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#grad)"/>
+  
+  <!-- Target rings -->
+  <circle cx="64" cy="64" r="44" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.3"/>
+  <circle cx="64" cy="64" r="28" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.5"/>
+  
+  <!-- Center dot (lead indicator) -->
+  <circle cx="64" cy="64" r="12" fill="#FFFFFF"/>
+  
+  <!-- Crosshair lines -->
+  <line x1="64" y1="20" x2="64" y2="40" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="64" y1="88" x2="64" y2="108" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="20" y1="64" x2="40" y2="64" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="88" y1="64" x2="108" y2="64" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- User/person silhouette in center -->
+  <circle cx="64" cy="58" r="6" fill="#3B82F6"/>
+  <path d="M54 72 Q54 66 64 66 Q74 66 74 72 L74 74 Q74 76 72 76 L56 76 Q54 76 54 74 Z" fill="#3B82F6"/>
+</svg>

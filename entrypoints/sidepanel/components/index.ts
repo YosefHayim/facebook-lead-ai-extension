@@ -8,3 +8,5 @@ export { LeadCard } from './LeadCard';
 export { LeadCardExpanded } from './LeadCardExpanded';
 export { GroupCard } from './GroupCard';
 export { Onboarding } from './Onboarding';
+export { BulkActionToolbar } from './BulkActionToolbar';
+export { AutomationTab } from './AutomationTab';

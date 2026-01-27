@@ -36,23 +36,23 @@ export function ScanButton({ sessionLimits }: ScanButtonProps) {
   const isDisabled = isScanning || isPaused;
 
   return (
-    <div className="bg-white border-b border-gray-200 p-3">
+    <div className="bg-background p-4">
       <button
         onClick={handleManualScan}
         disabled={isDisabled}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+        className={`w-full flex items-center justify-center gap-2.5 h-12 rounded-xl font-semibold text-[15px] transition-colors ${
           isDisabled
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'bg-blue-500 text-white hover:bg-blue-600'
+            ? 'bg-card-elevated text-foreground-muted cursor-not-allowed'
+            : 'bg-foreground text-background hover:bg-accent-hover'
         }`}
       >
         {isScanning ? (
           <>
-            <RefreshCw className="w-4 h-4 animate-spin" /> Scanning...
+            <RefreshCw className="w-[18px] h-[18px] animate-spin" /> Scanning...
           </>
         ) : (
           <>
-            <Search className="w-4 h-4" /> Scan This Page
+            <Search className="w-[18px] h-[18px]" /> Scan This Page
           </>
         )}
       </button>
@@ -66,13 +66,13 @@ function ScanResultMessage({ result }: { result: ScanResult }) {
 
   return (
     <div
-      className={`mt-2 text-xs p-2 rounded ${
-        hasErrors ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+      className={`mt-3 text-xs p-3 rounded-lg ${
+        hasErrors ? 'bg-card text-foreground-secondary' : 'bg-card text-foreground-secondary'
       }`}
     >
       {hasErrors ? (
-        <span className="flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
+        <span className="flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5" />
           {result.errors[0]}
         </span>
       ) : (

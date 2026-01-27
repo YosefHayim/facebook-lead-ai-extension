@@ -41,6 +41,7 @@ export interface Lead {
   contactedAt?: number;
   responseTracking?: ResponseTracking;
   feedback?: LeadFeedback;
+  lci?: LeadContextIntelligence;
 }
 
 export interface ResponseTracking {
@@ -144,3 +145,61 @@ export const PRO_TIER_LIMITS: UserSubscription = {
   leadsLimit: Infinity,
   aiCallsLimit: 500,
 };
+
+export interface AutomationSettings {
+  enabled: boolean;
+  scanIntervalMinutes: number;
+  groupsPerCycle: number;
+  delayMinSeconds: number;
+  delayMaxSeconds: number;
+  lastScanAt?: number;
+  isPro: boolean;
+}
+
+export interface ScheduledTask {
+  id: string;
+  type: 'scan_group' | 'process_leads';
+  groupId?: string;
+  groupName?: string;
+  scheduledAt: number;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  createdAt: number;
+}
+
+export interface AutomationState {
+  isRunning: boolean;
+  currentTaskId?: string;
+  queue: ScheduledTask[];
+  completedCount: number;
+  failedCount: number;
+  startedAt?: number;
+}
+
+export interface LeadContextIntelligence {
+  fetchedAt: number;
+  profileName?: string;
+  profileBio?: string;
+  location?: string;
+  workplace?: string;
+  education?: string;
+  followers?: number;
+  friends?: number;
+  joinedDate?: string;
+  recentActivity?: ProfileActivity[];
+  commonGroups?: string[];
+  interests?: string[];
+  contactInfo?: {
+    email?: string;
+    phone?: string;
+    website?: string;
+  };
+  aiSummary?: string;
+  confidenceScore: number;
+}
+
+export interface ProfileActivity {
+  type: 'post' | 'comment' | 'like' | 'share';
+  text?: string;
+  timestamp?: number;
+  groupName?: string;
+}

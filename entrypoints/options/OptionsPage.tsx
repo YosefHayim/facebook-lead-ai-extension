@@ -107,7 +107,7 @@ export function OptionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header saveStatus={saveStatus} />
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex gap-8">
@@ -159,20 +159,20 @@ export function OptionsPage() {
 
 function Header({ saveStatus }: { saveStatus: 'idle' | 'saving' | 'saved' }) {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-card border-b border-border">
       <div className="max-w-4xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-foreground rounded-xl flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-background" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">LeadScout AI</h1>
-              <p className="text-sm text-gray-500">Extension Settings</p>
+              <h1 className="text-xl font-semibold text-foreground">LeadScout AI</h1>
+              <p className="text-sm text-foreground-muted">Extension Settings</p>
             </div>
           </div>
           {saveStatus === 'saved' && (
-            <div className="flex items-center gap-2 text-green-600 text-sm">
+            <div className="flex items-center gap-2 text-foreground-secondary text-sm">
               <Check className="w-4 h-4" />
               Saved
             </div>
@@ -199,7 +199,7 @@ function Navigation({ activeTab, setActiveTab }: { activeTab: Tab; setActiveTab:
             <button
               onClick={() => setActiveTab(id)}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === id ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+                activeTab === id ? 'bg-card-elevated text-foreground' : 'text-foreground-muted hover:bg-card-elevated hover:text-foreground'
               }`}
             >
               <Icon className="w-5 h-5" />

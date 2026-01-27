@@ -35,33 +35,33 @@ interface AIConfigSectionProps {
 
 function AIConfigSection({ settings, apiKey, setApiKey, onSettingChange, onSaveApiKey }: AIConfigSectionProps) {
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-4">AI Configuration</h2>
+    <section className="bg-card rounded-xl border border-border p-6">
+      <h2 className="text-lg font-medium text-foreground mb-4">AI Configuration</h2>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">AI Provider</label>
+          <label className="block text-sm font-medium text-foreground-secondary mb-2">AI Provider</label>
           <select
             value={settings.aiProvider}
             onChange={(e) => onSettingChange('aiProvider', e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full border border-border bg-card-elevated text-foreground rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-foreground-muted"
           >
             <option value="gemini">Google Gemini</option>
             <option value="openai">OpenAI GPT-4</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+          <label className="block text-sm font-medium text-foreground-secondary mb-2">API Key</label>
           <div className="flex gap-3">
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={`Enter your ${settings.aiProvider === 'gemini' ? 'Gemini' : 'OpenAI'} API key`}
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 border border-border bg-background text-foreground rounded-lg px-4 py-2.5 text-sm placeholder:text-foreground-muted focus:outline-none focus:border-foreground-muted"
             />
             <button
               onClick={onSaveApiKey}
-              className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              className="px-4 py-2.5 bg-foreground text-background text-sm font-medium rounded-lg hover:bg-accent-hover flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
               Save
@@ -80,8 +80,8 @@ interface ScanningOptionsSectionProps {
 
 function ScanningOptionsSection({ settings, onSettingChange }: ScanningOptionsSectionProps) {
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-4">Scanning Options</h2>
+    <section className="bg-card rounded-xl border border-border p-6">
+      <h2 className="text-lg font-medium text-foreground mb-4">Scanning Options</h2>
       <div className="space-y-4">
         <ToggleOption
           label="Enable Lead Scanning"
@@ -103,8 +103,8 @@ function ScanningOptionsSection({ settings, onSettingChange }: ScanningOptionsSe
         />
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">Minimum Lead Score</label>
-            <span className="text-sm text-blue-600 font-medium">{settings.minLeadScore}%</span>
+            <label className="text-sm font-medium text-foreground-secondary">Minimum Lead Score</label>
+            <span className="text-sm text-foreground font-medium">{settings.minLeadScore}%</span>
           </div>
           <input
             type="range"
@@ -112,9 +112,9 @@ function ScanningOptionsSection({ settings, onSettingChange }: ScanningOptionsSe
             max="100"
             value={settings.minLeadScore}
             onChange={(e) => onSettingChange('minLeadScore', parseInt(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-2 bg-card-elevated rounded-lg appearance-none cursor-pointer accent-foreground"
           />
-          <p className="text-xs text-gray-500 mt-1">Only show leads with confidence score above this threshold</p>
+          <p className="text-xs text-foreground-muted mt-1">Only show leads with confidence score above this threshold</p>
         </div>
       </div>
     </section>
@@ -128,8 +128,8 @@ interface TransparencySectionProps {
 
 function TransparencySection({ settings, onSettingChange }: TransparencySectionProps) {
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-lg font-medium text-gray-900 mb-4">Transparency & Disclosure</h2>
+    <section className="bg-card rounded-xl border border-border p-6">
+      <h2 className="text-lg font-medium text-foreground mb-4">Transparency & Disclosure</h2>
       <div className="space-y-4">
         <ToggleOption
           label="Add AI Disclosure to Replies"
@@ -139,15 +139,15 @@ function TransparencySection({ settings, onSettingChange }: TransparencySectionP
         />
         {settings.transparencyEnabled && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Disclosure Text</label>
+            <label className="block text-sm font-medium text-foreground-secondary mb-2">Disclosure Text</label>
             <input
               type="text"
               value={settings.transparencyText}
               onChange={(e) => onSettingChange('transparencyText', e.target.value)}
               placeholder="[AI-assisted response]"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 text-sm placeholder:text-foreground-muted focus:outline-none focus:border-foreground-muted"
             />
-            <p className="text-xs text-gray-500 mt-1">This text will be appended to all AI-generated replies</p>
+            <p className="text-xs text-foreground-muted mt-1">This text will be appended to all AI-generated replies</p>
           </div>
         )}
       </div>
@@ -164,16 +164,16 @@ interface ToggleOptionProps {
 
 function ToggleOption({ label, description, checked, onChange }: ToggleOptionProps) {
   return (
-    <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+    <label className="flex items-center justify-between p-3 bg-card-elevated rounded-lg cursor-pointer">
       <div>
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs text-foreground-muted">{description}</p>
       </div>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+        className="w-5 h-5 rounded accent-foreground"
       />
     </label>
   );
