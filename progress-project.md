@@ -136,7 +136,9 @@
 | ~~High~~ | ~~Implement bulk actions~~ | ✅ Completed - Multi-select, export CSV, batch updates, AI replies |
 | ~~Medium~~ | ~~Implement automation scheduler~~ | ✅ Completed - Background scans, group rotation, human delays |
 | ~~Medium~~ | ~~LCI Feature~~ | ✅ Completed - Profile scraping with LCI display |
+| ~~High~~ | ~~Backend + Payments~~ | ✅ Completed - Node.js backend with Lemon Squeezy integration |
 | Low | Real-world testing | Test on actual Facebook pages |
+| Low | Deploy backend | Deploy to Railway/Render/etc. |
 
 ---
 
@@ -144,7 +146,7 @@
 
 | Task | Started | Agent | Notes |
 |------|---------|-------|-------|
-| _None_ | - | - | All initial tasks completed |
+| _None_ | - | - | Backend completed, ready for deployment |
 
 ---
 
@@ -152,6 +154,19 @@
 
 ```
 facebook-lead-ai-extension/
+├── backend/                    # Node.js Express API
+│   ├── src/
+│   │   ├── index.ts           # Express server entry
+│   │   ├── config/            # env.ts, database.ts
+│   │   ├── controllers/       # payments.ts
+│   │   ├── middleware/        # auth.ts
+│   │   ├── models/            # User.ts, Lead.ts
+│   │   ├── routes/            # index.ts, payments.ts
+│   │   ├── services/          # lemonsqueezy.ts
+│   │   ├── webhooks/          # lemonsqueezy.ts
+│   │   └── types/             # index.ts
+│   ├── package.json
+│   └── tsconfig.json
 ├── entrypoints/
 │   ├── background.ts           # Service worker for API calls
 │   ├── facebook.content/       # Content script for Facebook
@@ -159,7 +174,7 @@ facebook-lead-ai-extension/
 │   │   ├── dom-observer.ts    # MutationObserver feed monitoring
 │   │   ├── LeadOverlay.tsx    # React overlay component
 │   │   └── style.css
-│   ├── options/                # NEW: Options page
+│   ├── options/                # Options page
 │   │   ├── index.html
 │   │   ├── main.tsx
 │   │   ├── OptionsPage.tsx    # Full settings UI
@@ -168,27 +183,29 @@ facebook-lead-ai-extension/
 │   │   ├── index.html, main.tsx, Popup.tsx, style.css
 │   └── sidepanel/
 │       ├── index.html, main.tsx, App.tsx, style.css
+│       └── components/
+│           └── PricingModal.tsx  # Pricing/upgrade modal
 ├── src/
 │   ├── types/index.ts          # TypeScript type definitions
 │   ├── lib/
 │   │   ├── storage.ts          # WXT storage definitions
-│   │   ├── supabase.ts         # NEW: Supabase auth integration
+│   │   ├── supabase.ts         # Supabase auth integration
+│   │   ├── api.ts              # Backend API client
+│   │   ├── analytics.ts        # Sentry + PostHog integration
+│   │   ├── bulk-actions.ts     # Bulk operations for leads
+│   │   └── scheduler.ts        # Automation scheduler
 │   │   └── ai/                 # AI integration
 │   │       ├── gemini.ts
 │   │       ├── openai.ts
 │   │       └── index.ts
+│   ├── hooks/
+│   │   ├── useBulkSelection.ts # Selection state management
+│   │   └── useAutomation.ts    # Automation state management
 │   └── utils/
 │       ├── facebook-selectors.ts
 │       ├── human-mimicry.ts
 │       └── cn.ts
 ├── public/icon/                # Icons: 16, 32, 48, 128px PNGs + SVG source
-├── src/
-│   ├── lib/
-│   │   ├── bulk-actions.ts     # Bulk operations for leads
-│   │   └── scheduler.ts        # Automation scheduler
-│   └── hooks/
-│       ├── useBulkSelection.ts # Selection state management
-│       └── useAutomation.ts    # Automation state management
 ├── wxt.config.ts
 ├── package.json
 ├── tailwind.config.ts
@@ -206,6 +223,9 @@ facebook-lead-ai-extension/
 | Relative imports only | WXT build issues with @/ path aliases | Previous |
 | Supabase for auth/sync | Free tier, easy setup, real-time capabilities | 2026-01-22 |
 | Options page in new tab | Better UX for complex settings than popup | 2026-01-22 |
+| Lemon Squeezy for payments | Developer-friendly MoR, handles taxes/compliance | 2026-01-27 |
+| MongoDB for backend | Flexible schema, free Atlas tier, mongoose ODM | 2026-01-27 |
+| Sentry + PostHog | Error tracking + product analytics | 2026-01-27 |
 
 ---
 
@@ -228,7 +248,35 @@ facebook-lead-ai-extension/
 
 ## Session Notes
 
-_Last session ended with: Completed LCI (Lead Context Intelligence) feature - profile scraping with workplace, location, education, bio display. All major features implemented. Build verified at 950.97 kB._
+### 2026-01-27 (Backend Session)
+
+**Backend + Payment Integration Completed:**
+- [x] Created Node.js/Express backend in `/backend/`
+- [x] MongoDB with Mongoose (User, Lead models)
+- [x] Lemon Squeezy payment integration:
+  - Checkout session creation
+  - Subscription management (cancel, resume, pause)
+  - Full webhook handler for all subscription events
+- [x] Supabase JWT auth middleware
+- [x] Sentry error tracking + PostHog analytics
+- [x] Extension API client (`src/lib/api.ts`)
+- [x] Analytics module (`src/lib/analytics.ts`)
+- [x] PricingModal component for upgrade flow
+- [x] Build verified: 943.14 kB
+
+**Backend Files Created:**
+- `backend/src/index.ts` - Express server
+- `backend/src/config/env.ts` - Zod validation
+- `backend/src/config/database.ts` - MongoDB connection
+- `backend/src/models/User.ts` - User schema with subscription
+- `backend/src/models/Lead.ts` - Lead schema
+- `backend/src/services/lemonsqueezy.ts` - Payment SDK
+- `backend/src/controllers/payments.ts` - Payment endpoints
+- `backend/src/webhooks/lemonsqueezy.ts` - Webhook handlers
+- `backend/src/middleware/auth.ts` - JWT auth
+- `backend/src/routes/index.ts`, `payments.ts` - Routes
+
+_Previous session: Completed LCI (Lead Context Intelligence) feature - profile scraping with workplace, location, education, bio display._
 
 _Design screens completed:_
 1. Onboarding - Welcome
@@ -254,27 +302,32 @@ _Email templates designed:_
 - Email - Birthday
 
 _Remaining tasks:_
-- Implement bulk actions logic in extension code
-- Add extension icons (16, 32, 48, 128px)
-- Implement React components from Pencil designs
+- Deploy backend to production (Railway/Render)
+- Configure Lemon Squeezy products + webhooks
+- Real-world E2E testing on Facebook
 
 ---
 
 ## Build Output
 
+**Extension (2026-01-27):**
 ```
-Σ Total size: 728.57 kB
-├─ manifest.json                   764 B
-├─ options.html                    562 B
+Σ Total size: 943.14 kB
+├─ manifest.json                   987 B
+├─ options.html                    561 B
 ├─ popup.html                      530 B
-├─ sidepanel.html                  611 B
-├─ background.js                   128.36 kB
-├─ chunks/options-*.js             198.03 kB
-├─ chunks/popup-*.js               3.42 kB
-├─ chunks/sidepanel-*.js           11.23 kB
-├─ content-scripts/facebook.js     193.48 kB
-└─ (CSS assets)
+├─ sidepanel.html                  610 B
+├─ background.js                   170.9 kB
+├─ chunks/options-*.js             200.07 kB
+├─ chunks/popup-*.js               3.71 kB
+├─ chunks/sidepanel-*.js           64.77 kB
+├─ content-scripts/facebook.js     204.23 kB
+└─ (CSS + icons)
 ```
+
+**Backend:**
+- TypeScript compilation: ✅ No errors
+- Dependencies installed: ✅ 253 packages
 
 ---
 
