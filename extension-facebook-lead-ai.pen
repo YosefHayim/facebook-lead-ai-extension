@@ -95,7 +95,8 @@
                   "content": "Find clients in Facebook groups",
                   "textAlign": "center",
                   "fontFamily": "Inter",
-                  "fontSize": 15
+                  "fontSize": 15,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -175,7 +176,8 @@
                       "fill": "#A1A1AA",
                       "content": "AI finds people looking for your services",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -243,7 +245,8 @@
                       "fill": "#A1A1AA",
                       "content": "Get AI-generated replies for each lead",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -311,7 +314,8 @@
                       "fill": "#A1A1AA",
                       "content": "Monitor outreach and conversion rates",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -532,7 +536,8 @@
                       "fill": "#A1A1AA",
                       "content": "Required for lead analysis",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -610,7 +615,8 @@
                           "fill": "#A1A1AA",
                           "content": "Free tier available",
                           "fontFamily": "Inter",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -647,7 +653,8 @@
                           "fill": "#A1A1AA",
                           "content": "GPT-4o-mini",
                           "fontFamily": "Inter",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -699,7 +706,8 @@
                       "fill": "#71717A",
                       "content": "AIza...",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -735,7 +743,8 @@
                   "width": 280,
                   "content": "Get your free API key from Google AI Studio",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -954,7 +963,8 @@
                       "fill": "#A1A1AA",
                       "content": "Tell us what leads you're looking for",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -1107,7 +1117,8 @@
                       "fill": "#FAFAFA",
                       "content": "Web Developer",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -1157,7 +1168,8 @@
                       "fill": "#FAFAFA",
                       "content": "Freelance Full-Stack Developer",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -1209,7 +1221,8 @@
                       "width": 300,
                       "content": "need website, looking for developer, who can build...",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -1220,7 +1233,8 @@
                   "fill": "#71717A",
                   "content": "Posts containing these keywords will be analyzed",
                   "fontFamily": "Inter",
-                  "fontSize": 11
+                  "fontSize": 11,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1269,7 +1283,8 @@
                       "fill": "#FAFAFA",
                       "content": "Professional",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "icon_font",
@@ -1468,7 +1483,8 @@
                   "content": "Here's how to find your first leads:",
                   "textAlign": "center",
                   "fontFamily": "Inter",
-                  "fontSize": 15
+                  "fontSize": 15,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1519,7 +1535,8 @@
                       "width": 280,
                       "content": "Go to a Facebook group with your target audience",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -1562,7 +1579,8 @@
                       "width": 280,
                       "content": "Click \"Scan This Page\" to analyze posts",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -1605,7 +1623,8 @@
                       "width": 280,
                       "content": "Review leads, copy AI responses, and reply!",
                       "fontFamily": "Inter",
-                      "fontSize": 14
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -2194,7 +2213,8 @@
                   "width": 336,
                   "content": "Looking for a developer to build my e-commerce website. Need someone experienced with Shopify or WooCommerce...",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2241,7 +2261,8 @@
                           "fill": "#71717A",
                           "content": "2 hours ago",
                           "fontFamily": "Inter",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -2388,7 +2409,8 @@
                   "width": 336,
                   "content": "Can anyone recommend a good web designer? I need help with my small business website...",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2435,7 +2457,8 @@
                           "fill": "#71717A",
                           "content": "Yesterday",
                           "fontFamily": "Inter",
-                          "fontSize": 11
+                          "fontSize": 11,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -2826,7 +2849,8 @@
                           "fill": "#A1A1AA",
                           "content": "Tech Freelancers Group",
                           "fontFamily": "Inter",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -2914,7 +2938,8 @@
                   "content": "Looking for a developer to build my e-commerce website. Need someone experienced with Shopify or WooCommerce. Budget is flexible for the right person. Please DM me with your portfolio!",
                   "lineHeight": 1.5,
                   "fontFamily": "Inter",
-                  "fontSize": 14
+                  "fontSize": 14,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2930,7 +2955,8 @@
                       "fill": "#71717A",
                       "content": "Posted 2 hours ago",
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -3015,7 +3041,8 @@
                   "content": "High-intent lead actively seeking e-commerce development services. Mentions budget flexibility and requests portfolio - indicates serious buyer. Keywords match: 'developer', 'e-commerce', 'Shopify'.",
                   "lineHeight": 1.5,
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -3155,7 +3182,8 @@
                   "content": "Hi! I'd love to help with your e-commerce project. I have 5+ years of experience building Shopify and WooCommerce stores. I'll send you my portfolio via DM. Looking forward to discussing your requirements!",
                   "lineHeight": 1.5,
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -3274,7 +3302,8 @@
                   "fill": "#71717A",
                   "content": "Rate this lead:",
                   "fontFamily": "Inter",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "icon_font",
