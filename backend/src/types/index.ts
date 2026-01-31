@@ -5,7 +5,7 @@ export type SubscriptionPlan = 'free' | 'pro' | 'agency';
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'past_due' | 'paused';
 
 export interface IUser {
-  supabaseId: string;
+  googleId: string;
   email: string;
   name?: string;
   avatarUrl?: string;
@@ -66,6 +66,49 @@ export interface ILead {
     gotReply?: boolean;
     repliedAt?: Date;
   };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ==================== Persona Types ====================
+export type AITone = 'professional' | 'casual' | 'friendly' | 'expert';
+
+export interface IPersona {
+  userId: string;
+  name: string;
+  role: string;
+  keywords: string[];
+  negativeKeywords: string[];
+  aiTone: AITone;
+  valueProposition: string;
+  signature?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ==================== Watched Group Types ====================
+export interface IWatchedGroup {
+  userId: string;
+  name: string;
+  url: string;
+  category: string;
+  lastVisited?: Date;
+  leadsFound: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ==================== Automation Settings Types ====================
+export interface IAutomationSettings {
+  userId: string;
+  enabled: boolean;
+  scanIntervalMinutes: number;
+  groupsPerCycle: number;
+  delayMinSeconds: number;
+  delayMaxSeconds: number;
+  lastScanAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -136,9 +179,22 @@ export interface LemonSqueezyWebhookEvent {
   };
 }
 
+// ==================== Google OAuth Types ====================
+export interface GoogleTokenInfo {
+  sub: string;
+  email: string;
+  email_verified: boolean;
+  name?: string;
+  picture?: string;
+  given_name?: string;
+  family_name?: string;
+  error?: string;
+  error_description?: string;
+}
+
 export interface AuthenticatedRequest extends Request {
   user?: {
-    supabaseId: string;
+    googleId: string;
     email: string;
     dbUserId: string;
   };

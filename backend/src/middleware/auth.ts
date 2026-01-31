@@ -1,16 +1,29 @@
 import type { Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
 import { User } from '../models/User.js';
-import { env } from '../config/env.js';
-import type { AuthenticatedRequest } from '../types/index.js';
+import type { AuthenticatedRequest, GoogleTokenInfo } from '../types/index.js';
 
-let supabase: ReturnType<typeof createClient> | null = null;
+const GOOGLE_TOKEN_INFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
 
-function getSupabaseAdmin() {
-  if (!supabase && env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
-    supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
+async function validateGoogleToken(accessToken: string): Promise<GoogleTokenInfo | null> {
+  try {
+    const response = await fetch(`${GOOGLE_TOKEN_INFO_URL}?access_token=${accessToken}`);
+    const data = await response.json() as GoogleTokenInfo;
+
+    if (data.error) {
+      console.error('[Auth] Google token validation error:', data.error_description);
+      return null;
+    }
+
+    if (!data.email_verified) {
+      console.error('[Auth] Google email not verified');
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[Auth] Failed to validate Google token:', error);
+    return null;
   }
-  return supabase;
 }
 
 export async function requireAuth(
@@ -27,32 +40,26 @@ export async function requireAuth(
   const token = authHeader.slice(7);
 
   try {
-    const supabaseAdmin = getSupabaseAdmin();
+    const googleUser = await validateGoogleToken(token);
 
-    if (!supabaseAdmin) {
-      return res.status(500).json({ success: false, error: 'Auth service unavailable' });
-    }
-
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (error || !user) {
+    if (!googleUser) {
       return res.status(401).json({ success: false, error: 'Invalid or expired token' });
     }
 
-    let dbUser = await User.findBySupabaseId(user.id);
+    let dbUser = await User.findByGoogleId(googleUser.sub);
 
     if (!dbUser) {
       dbUser = await User.create({
-        supabaseId: user.id,
-        email: user.email!,
-        name: user.user_metadata?.full_name || user.user_metadata?.name,
-        avatarUrl: user.user_metadata?.avatar_url,
+        googleId: googleUser.sub,
+        email: googleUser.email,
+        name: googleUser.name,
+        avatarUrl: googleUser.picture,
       });
     }
 
     req.user = {
-      supabaseId: user.id,
-      email: user.email!,
+      googleId: googleUser.sub,
+      email: googleUser.email,
       dbUserId: dbUser._id.toString(),
     };
 
@@ -77,21 +84,15 @@ export async function optionalAuth(
   const token = authHeader.slice(7);
 
   try {
-    const supabaseAdmin = getSupabaseAdmin();
+    const googleUser = await validateGoogleToken(token);
 
-    if (!supabaseAdmin) {
-      return next();
-    }
-
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (!error && user) {
-      const dbUser = await User.findBySupabaseId(user.id);
+    if (googleUser) {
+      const dbUser = await User.findByGoogleId(googleUser.sub);
 
       if (dbUser) {
         req.user = {
-          supabaseId: user.id,
-          email: user.email!,
+          googleId: googleUser.sub,
+          email: googleUser.email,
           dbUserId: dbUser._id.toString(),
         };
       }

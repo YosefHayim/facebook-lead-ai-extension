@@ -1,44 +1,29 @@
 {
-  "name": "leadscout-ai",
-  "displayName": "LeadScout AI - Facebook Lead Generation",
-  "version": "0.1.0",
-  "description": "AI-powered lead scouting for Facebook groups and feeds",
+  "name": "leadscout-ai-monorepo",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "description": "LeadScout AI - Facebook Lead Generation Platform",
+  "workspaces": [
+    "extension",
+    "backend"
+  ],
   "scripts": {
-    "dev": "wxt",
-    "dev:firefox": "wxt -b firefox",
-    "build": "wxt build",
-    "build:firefox": "wxt build -b firefox",
-    "zip": "wxt zip",
-    "zip:firefox": "wxt zip -b firefox",
-    "postinstall": "wxt prepare",
-    "check": "tsc --noEmit",
-    "test": "vitest"
+    "dev": "npm run dev:backend & npm run dev:extension",
+    "dev:extension": "npm run dev --workspace=extension",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspaces",
+    "build:extension": "npm run build --workspace=extension",
+    "build:backend": "npm run build --workspace=backend",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "rm -rf node_modules extension/node_modules backend/node_modules"
   },
-  "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "@sentry/browser": "^10.37.0",
-    "@supabase/supabase-js": "^2.47.0",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.468.0",
-    "openai": "^4.77.0",
-    "posthog-js": "^1.335.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.6.0",
-    "zustand": "^5.0.2"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.14",
-    "@types/react-dom": "^18.3.3",
-    "@wxt-dev/module-react": "^1.1.2",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.5",
-    "vitest": "^2.1.8",
-    "wxt": "^0.19.25"
-  }
+  "keywords": [
+    "facebook",
+    "lead-generation",
+    "chrome-extension",
+    "ai"
+  ],
+  "author": "",
+  "license": "PRIVATE"
 }

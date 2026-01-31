@@ -2,11 +2,16 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 import type { IUser, SubscriptionPlan, SubscriptionStatus } from '../types/index.js';
 import { PLAN_LIMITS } from '../types/index.js';
 
-export interface IUserDocument extends IUser, Document {}
+export interface IUserDocument extends IUser, Document {
+  isWithinLimits(type: 'leads' | 'aiCalls'): boolean;
+  incrementUsage(type: 'leads' | 'aiCalls', amount?: number): Promise<void>;
+  resetMonthlyUsage(): Promise<void>;
+  updatePlan(plan: SubscriptionPlan): Promise<void>;
+}
 
 const userSchema = new Schema<IUserDocument>(
   {
-    supabaseId: {
+    googleId: {
       type: String,
       required: true,
       unique: true,
@@ -112,10 +117,10 @@ userSchema.methods.updatePlan = async function (
   await this.save();
 };
 
-userSchema.statics.findBySupabaseId = function (
-  supabaseId: string
+userSchema.statics.findByGoogleId = function (
+  googleId: string
 ): Promise<IUserDocument | null> {
-  return this.findOne({ supabaseId });
+  return this.findOne({ googleId });
 };
 
 userSchema.statics.findByLemonSqueezyCustomerId = function (
@@ -131,7 +136,7 @@ userSchema.statics.findByLemonSqueezySubscriptionId = function (
 };
 
 export interface IUserModel extends Model<IUserDocument> {
-  findBySupabaseId(supabaseId: string): Promise<IUserDocument | null>;
+  findByGoogleId(googleId: string): Promise<IUserDocument | null>;
   findByLemonSqueezyCustomerId(customerId: string): Promise<IUserDocument | null>;
   findByLemonSqueezySubscriptionId(subscriptionId: string): Promise<IUserDocument | null>;
 }
