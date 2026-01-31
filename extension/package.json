@@ -19,7 +19,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@sentry/browser": "^10.37.0",
-    "@supabase/supabase-js": "^2.47.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "openai": "^4.77.0",

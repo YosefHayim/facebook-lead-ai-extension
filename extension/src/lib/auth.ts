@@ -1,4 +1,4 @@
-import { storage } from 'wxt/storage';
+import { storage } from "wxt/storage";
 
 export interface AuthUser {
   id: string;
@@ -6,7 +6,7 @@ export interface AuthUser {
   name?: string;
   avatarUrl?: string;
   subscription: {
-    plan: 'free' | 'pro' | 'agency';
+    plan: "free" | "pro" | "agency";
     status: string;
   };
   limits: {
@@ -25,7 +25,7 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-const authStateStorage = storage.defineItem<AuthState>('local:authState', {
+export const authStateStorage = storage.defineItem<AuthState>("local:authState", {
   fallback: {
     accessToken: null,
     user: null,
@@ -33,7 +33,7 @@ const authStateStorage = storage.defineItem<AuthState>('local:authState', {
   },
 });
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 class AuthService {
   private state: AuthState = {
@@ -55,19 +55,19 @@ class AuthService {
       const token = await this.getGoogleToken();
 
       if (!token) {
-        return { user: null, error: new Error('Failed to get Google token') };
+        return { user: null, error: new Error("Failed to get Google token") };
       }
 
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken: token }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        return { user: null, error: new Error(data.error || 'Login failed') };
+        return { user: null, error: new Error(data.error || "Login failed") };
       }
 
       this.state = {
@@ -80,8 +80,8 @@ class AuthService {
 
       return { user: this.state.user, error: null };
     } catch (error) {
-      console.error('[Auth] Sign in error:', error);
-      return { user: null, error: error instanceof Error ? error : new Error('Sign in failed') };
+      console.error("[Auth] Sign in error:", error);
+      return { user: null, error: error instanceof Error ? error : new Error("Sign in failed") };
     }
   }
 
@@ -89,7 +89,7 @@ class AuthService {
     return new Promise((resolve) => {
       chrome.identity.getAuthToken({ interactive: true }, (token) => {
         if (chrome.runtime.lastError) {
-          console.error('[Auth] Chrome identity error:', chrome.runtime.lastError);
+          console.error("[Auth] Chrome identity error:", chrome.runtime.lastError);
           resolve(null);
           return;
         }
@@ -101,10 +101,7 @@ class AuthService {
   async signOut(): Promise<void> {
     if (this.state.accessToken) {
       await new Promise<void>((resolve) => {
-        chrome.identity.removeCachedAuthToken(
-          { token: this.state.accessToken! },
-          () => resolve()
-        );
+        chrome.identity.removeCachedAuthToken({ token: this.state.accessToken! }, () => resolve());
       });
     }
 
@@ -141,7 +138,7 @@ class AuthService {
         await authStateStorage.setValue(this.state);
       }
     } catch (error) {
-      console.error('[Auth] Refresh user data error:', error);
+      console.error("[Auth] Refresh user data error:", error);
     }
   }
 
