@@ -9,7 +9,6 @@ interface LemonSqueezyWebhookPayload {
   meta: {
     event_name: string;
     custom_data?: {
-      supabase_id?: string;
       user_id?: string;
     };
   };
@@ -167,33 +166,33 @@ export async function handleWebhook(req: Request, res: Response) {
 
 async function handleSubscriptionCreated(payload: LemonSqueezyWebhookPayload) {
   const { data, meta } = payload;
-  const supabaseId = meta.custom_data?.supabase_id;
+  const userId = meta.custom_data?.user_id;
 
-  if (!supabaseId) {
-    console.error('[Webhook] subscription_created: Missing supabase_id in custom_data');
+  if (!userId) {
+    console.error('[Webhook] subscription_created: Missing user_id in custom_data');
     return;
   }
 
-  const user = await User.findBySupabaseId(supabaseId);
+  const user = await User.findById(userId);
   if (!user) {
-    console.error(`[Webhook] subscription_created: User not found for supabase_id: ${supabaseId}`);
+    console.error(`[Webhook] subscription_created: User not found for id: ${userId}`);
     return;
   }
 
   const plan = getPlanFromVariantId(data.attributes.variant_id);
+  const limits = PLAN_LIMITS[plan];
 
-  user.subscription.plan = plan;
-  user.subscription.status = mapLemonSqueezyStatus(data.attributes.status);
-  user.subscription.lemonSqueezyCustomerId = data.relationships?.customer?.data?.id || String(data.attributes.customer_id);
-  user.subscription.lemonSqueezySubscriptionId = data.id;
-  user.subscription.currentPeriodEnd = data.attributes.renews_at
-    ? new Date(data.attributes.renews_at)
-    : undefined;
-  user.subscription.cancelAtPeriodEnd = false;
-  user.limits.leadsPerMonth = PLAN_LIMITS[plan].leadsPerMonth;
-  user.limits.aiCallsPerMonth = PLAN_LIMITS[plan].aiCallsPerMonth;
+  await User.update(user.id, {
+    subscriptionPlan: plan,
+    subscriptionStatus: mapLemonSqueezyStatus(data.attributes.status),
+    lemonSqueezyCustomerId: data.relationships?.customer?.data?.id || String(data.attributes.customer_id),
+    lemonSqueezySubscriptionId: data.id,
+    currentPeriodEnd: data.attributes.renews_at ? new Date(data.attributes.renews_at) : undefined,
+    cancelAtPeriodEnd: false,
+    leadsPerMonth: limits.leadsPerMonth === Infinity ? 999999 : limits.leadsPerMonth,
+    aiCallsPerMonth: limits.aiCallsPerMonth,
+  });
 
-  await user.save();
   console.log(`[Webhook] subscription_created: Updated user ${user.email} to ${plan} plan`);
 }
 
@@ -208,17 +207,17 @@ async function handleSubscriptionUpdated(payload: LemonSqueezyWebhookPayload) {
   }
 
   const plan = getPlanFromVariantId(data.attributes.variant_id);
+  const limits = PLAN_LIMITS[plan];
 
-  user.subscription.plan = plan;
-  user.subscription.status = mapLemonSqueezyStatus(data.attributes.status);
-  user.subscription.currentPeriodEnd = data.attributes.renews_at
-    ? new Date(data.attributes.renews_at)
-    : undefined;
-  user.subscription.cancelAtPeriodEnd = data.attributes.cancelled && !!data.attributes.ends_at;
-  user.limits.leadsPerMonth = PLAN_LIMITS[plan].leadsPerMonth;
-  user.limits.aiCallsPerMonth = PLAN_LIMITS[plan].aiCallsPerMonth;
+  await User.update(user.id, {
+    subscriptionPlan: plan,
+    subscriptionStatus: mapLemonSqueezyStatus(data.attributes.status),
+    currentPeriodEnd: data.attributes.renews_at ? new Date(data.attributes.renews_at) : undefined,
+    cancelAtPeriodEnd: data.attributes.cancelled && !!data.attributes.ends_at,
+    leadsPerMonth: limits.leadsPerMonth === Infinity ? 999999 : limits.leadsPerMonth,
+    aiCallsPerMonth: limits.aiCallsPerMonth,
+  });
 
-  await user.save();
   console.log(`[Webhook] subscription_updated: Updated user ${user.email} - status: ${data.attributes.status}`);
 }
 
@@ -232,13 +231,12 @@ async function handleSubscriptionCancelled(payload: LemonSqueezyWebhookPayload) 
     return;
   }
 
-  user.subscription.status = 'cancelled';
-  user.subscription.cancelAtPeriodEnd = true;
-  if (data.attributes.ends_at) {
-    user.subscription.currentPeriodEnd = new Date(data.attributes.ends_at);
-  }
+  await User.update(user.id, {
+    subscriptionStatus: 'cancelled',
+    cancelAtPeriodEnd: true,
+    currentPeriodEnd: data.attributes.ends_at ? new Date(data.attributes.ends_at) : undefined,
+  });
 
-  await user.save();
   console.log(`[Webhook] subscription_cancelled: User ${user.email} subscription cancelled`);
 }
 
@@ -252,10 +250,11 @@ async function handleSubscriptionResumed(payload: LemonSqueezyWebhookPayload) {
     return;
   }
 
-  user.subscription.status = 'active';
-  user.subscription.cancelAtPeriodEnd = false;
+  await User.update(user.id, {
+    subscriptionStatus: 'active',
+    cancelAtPeriodEnd: false,
+  });
 
-  await user.save();
   console.log(`[Webhook] subscription_resumed: User ${user.email} subscription resumed`);
 }
 
@@ -269,14 +268,14 @@ async function handleSubscriptionExpired(payload: LemonSqueezyWebhookPayload) {
     return;
   }
 
-  user.subscription.plan = 'free';
-  user.subscription.status = 'expired';
-  user.subscription.cancelAtPeriodEnd = false;
-  user.subscription.lemonSqueezySubscriptionId = undefined;
-  user.limits.leadsPerMonth = PLAN_LIMITS.free.leadsPerMonth;
-  user.limits.aiCallsPerMonth = PLAN_LIMITS.free.aiCallsPerMonth;
+  await User.update(user.id, {
+    subscriptionPlan: 'free',
+    subscriptionStatus: 'expired',
+    cancelAtPeriodEnd: false,
+    leadsPerMonth: PLAN_LIMITS.free.leadsPerMonth,
+    aiCallsPerMonth: PLAN_LIMITS.free.aiCallsPerMonth,
+  });
 
-  await user.save();
   console.log(`[Webhook] subscription_expired: User ${user.email} downgraded to free plan`);
 }
 
@@ -290,8 +289,7 @@ async function handleSubscriptionPaused(payload: LemonSqueezyWebhookPayload) {
     return;
   }
 
-  user.subscription.status = 'paused';
-  await user.save();
+  await User.update(user.id, { subscriptionStatus: 'paused' });
   console.log(`[Webhook] subscription_paused: User ${user.email} subscription paused`);
 }
 
@@ -305,8 +303,7 @@ async function handleSubscriptionUnpaused(payload: LemonSqueezyWebhookPayload) {
     return;
   }
 
-  user.subscription.status = 'active';
-  await user.save();
+  await User.update(user.id, { subscriptionStatus: 'active' });
   console.log(`[Webhook] subscription_unpaused: User ${user.email} subscription resumed`);
 }
 
@@ -326,8 +323,7 @@ async function handlePaymentSuccess(payload: LemonSqueezyWebhookPayload) {
   }
 
   if (user.subscription.status === 'past_due') {
-    user.subscription.status = 'active';
-    await user.save();
+    await User.update(user.id, { subscriptionStatus: 'active' });
     console.log(`[Webhook] subscription_payment_success: User ${user.email} status updated to active`);
   }
 }
@@ -347,7 +343,6 @@ async function handlePaymentFailed(payload: LemonSqueezyWebhookPayload) {
     return;
   }
 
-  user.subscription.status = 'past_due';
-  await user.save();
+  await User.update(user.id, { subscriptionStatus: 'past_due' });
   console.log(`[Webhook] subscription_payment_failed: User ${user.email} status updated to past_due`);
 }

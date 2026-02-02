@@ -29,14 +29,10 @@ router.patch('/settings', async (req: AuthenticatedRequest, res) => {
     let settings = await AutomationSettings.findByUserId(req.user!.dbUserId);
 
     if (!settings) {
-      settings = await AutomationSettings.create({
-        userId: req.user!.dbUserId,
-        ...req.body,
-      });
-    } else {
-      Object.assign(settings, req.body);
-      await settings.save();
+      settings = await AutomationSettings.findOrCreate(req.user!.dbUserId);
     }
+
+    settings = await AutomationSettings.updateByUserId(req.user!.dbUserId, req.body);
 
     res.json({
       success: true,

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Lead } from '../models/Lead.js';
 import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
-import type { AuthenticatedRequest, ApiResponse, LeadStatus } from '../types/index.js';
+import type { AuthenticatedRequest, ApiResponse, LeadStatus, IntentType } from '../types/index.js';
 
 const router = Router();
 
@@ -39,7 +39,22 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 
 router.post('/', async (req: AuthenticatedRequest, res) => {
   try {
-    const leadData = req.body;
+    const leadData = req.body as {
+      postUrl: string;
+      postText: string;
+      authorName: string;
+      authorProfileUrl: string;
+      groupName?: string;
+      intent: IntentType;
+      leadScore: number;
+      aiAnalysis?: {
+        intent: IntentType;
+        confidence: number;
+        reasoning: string;
+        keywords: string[];
+      };
+      aiDraftReply?: string;
+    };
 
     const user = await User.findById(req.user!.dbUserId);
     if (!user) {
@@ -49,7 +64,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
       } as ApiResponse);
     }
 
-    if (!user.isWithinLimits('leads')) {
+    if (!User.isWithinLimits(user, 'leads')) {
       return res.status(403).json({
         success: false,
         error: 'Monthly lead limit reached',
@@ -61,7 +76,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
       userId: req.user!.dbUserId,
     });
 
-    await user.incrementUsage('leads');
+    await User.incrementUsage(user.id, 'leads');
 
     res.status(201).json({
       success: true,
@@ -78,7 +93,22 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 
 router.post('/bulk', async (req: AuthenticatedRequest, res) => {
   try {
-    const { leads: leadsData } = req.body as { leads: unknown[] };
+    const { leads: leadsData } = req.body as { leads: Array<{
+      postUrl: string;
+      postText: string;
+      authorName: string;
+      authorProfileUrl: string;
+      groupName?: string;
+      intent: IntentType;
+      leadScore: number;
+      aiAnalysis?: {
+        intent: IntentType;
+        confidence: number;
+        reasoning: string;
+        keywords: string[];
+      };
+      aiDraftReply?: string;
+    }> };
 
     if (!Array.isArray(leadsData)) {
       return res.status(400).json({
@@ -98,14 +128,14 @@ router.post('/bulk', async (req: AuthenticatedRequest, res) => {
     const remaining = user.limits.leadsPerMonth - user.usage.leadsFoundThisMonth;
     const toCreate = leadsData.slice(0, remaining);
 
-    const leads = await Lead.insertMany(
+    const leads = await Lead.createBulk(
       toCreate.map((lead) => ({
         ...lead,
         userId: req.user!.dbUserId,
       }))
     );
 
-    await user.incrementUsage('leads', leads.length);
+    await User.incrementUsage(user.id, 'leads', leads.length);
 
     res.status(201).json({
       success: true,
@@ -124,14 +154,33 @@ router.post('/bulk', async (req: AuthenticatedRequest, res) => {
   }
 });
 
+router.get('/stats/summary', async (req: AuthenticatedRequest, res) => {
+  try {
+    const stats = await Lead.getStats(req.user!.dbUserId);
+
+    res.json({
+      success: true,
+      data: {
+        total: stats.total,
+        thisMonth: stats.thisMonth,
+        byStatus: stats.byStatus,
+      },
+    } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch stats',
+    } as ApiResponse);
+  }
+});
+
 router.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const lead = await Lead.findOne({
-      _id: req.params.id,
-      userId: req.user!.dbUserId,
-    });
+    const id = req.params.id as string;
+    const lead = await Lead.findById(id);
 
-    if (!lead) {
+    if (!lead || lead.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Lead not found',
@@ -153,18 +202,17 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.patch('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const lead = await Lead.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user!.dbUserId },
-      { $set: req.body },
-      { new: true }
-    );
+    const id = req.params.id as string;
+    const existingLead = await Lead.findById(id);
 
-    if (!lead) {
+    if (!existingLead || existingLead.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Lead not found',
       } as ApiResponse);
     }
+
+    const lead = await Lead.update(id, req.body);
 
     res.json({
       success: true,
@@ -181,17 +229,17 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const lead = await Lead.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user!.dbUserId,
-    });
+    const id = req.params.id as string;
+    const existingLead = await Lead.findById(id);
 
-    if (!lead) {
+    if (!existingLead || existingLead.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Lead not found',
       } as ApiResponse);
     }
+
+    await Lead.delete(id);
 
     res.json({
       success: true,
@@ -202,45 +250,6 @@ router.delete('/:id', async (req: AuthenticatedRequest, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete lead',
-    } as ApiResponse);
-  }
-});
-
-router.get('/stats/summary', async (req: AuthenticatedRequest, res) => {
-  try {
-    const userId = req.user!.dbUserId;
-
-    const [total, byStatus, thisMonth] = await Promise.all([
-      Lead.countByUserId(userId),
-      Promise.all([
-        Lead.countByUserId(userId, { status: 'new' }),
-        Lead.countByUserId(userId, { status: 'contacted' }),
-        Lead.countByUserId(userId, { status: 'converted' }),
-        Lead.countByUserId(userId, { status: 'ignored' }),
-      ]),
-      Lead.countByUserId(userId, {
-        since: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      }),
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        total,
-        thisMonth,
-        byStatus: {
-          new: byStatus[0],
-          contacted: byStatus[1],
-          converted: byStatus[2],
-          ignored: byStatus[3],
-        },
-      },
-    } as ApiResponse);
-  } catch (error) {
-    console.error('[Leads] Stats error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch stats',
     } as ApiResponse);
   }
 });

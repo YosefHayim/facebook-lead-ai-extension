@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import * as Sentry from '@sentry/node';
 import { PostHog } from 'posthog-node';
 import { env } from './config/env.js';
-import { connectDatabase } from './config/database.js';
+import { initDatabase } from './db/index.js';
 import routes from './routes/index.js';
 
 declare global {
@@ -75,8 +75,8 @@ app.use(
 
 async function startServer() {
   try {
-    await connectDatabase();
-    console.log('[Database] Connected to MongoDB');
+    await initDatabase();
+    console.log('[Database] Connected to PostgreSQL (Neon)');
 
     const port = parseInt(env.PORT, 10);
     app.listen(port, () => {

@@ -7,7 +7,7 @@ const envSchema = z.object({
   PORT: z.string().default('3001'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   
-  MONGODB_URI: z.string().min(1, 'MongoDB URI is required'),
+  DATABASE_URL: z.string().min(1, 'Database URL is required'),
   
   LEMONSQUEEZY_API_KEY: z.string().min(1, 'Lemon Squeezy API key is required'),
   LEMONSQUEEZY_STORE_ID: z.string().min(1, 'Lemon Squeezy store ID is required'),

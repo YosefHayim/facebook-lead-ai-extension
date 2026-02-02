@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Persona } from '../models/Persona.js';
 import { requireAuth } from '../middleware/auth.js';
-import type { AuthenticatedRequest, ApiResponse } from '../types/index.js';
+import type { AuthenticatedRequest, ApiResponse, AITone } from '../types/index.js';
 
 const router = Router();
 
@@ -30,7 +30,16 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 
 router.post('/', async (req: AuthenticatedRequest, res) => {
   try {
-    const personaData = req.body;
+    const personaData = req.body as {
+      name: string;
+      role: string;
+      keywords?: string[];
+      negativeKeywords?: string[];
+      aiTone?: AITone;
+      valueProposition: string;
+      signature?: string;
+      isActive?: boolean;
+    };
 
     const persona = await Persona.create({
       ...personaData,
@@ -69,12 +78,10 @@ router.get('/active', async (req: AuthenticatedRequest, res) => {
 
 router.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const persona = await Persona.findOne({
-      _id: req.params.id,
-      userId: req.user!.dbUserId,
-    });
+    const id = req.params.id as string;
+    const persona = await Persona.findById(id);
 
-    if (!persona) {
+    if (!persona || persona.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Persona not found',
@@ -96,18 +103,17 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.patch('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const persona = await Persona.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user!.dbUserId },
-      { $set: req.body },
-      { new: true }
-    );
+    const id = req.params.id as string;
+    const existingPersona = await Persona.findById(id);
 
-    if (!persona) {
+    if (!existingPersona || existingPersona.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Persona not found',
       } as ApiResponse);
     }
+
+    const persona = await Persona.update(id, req.body);
 
     res.json({
       success: true,
@@ -124,16 +130,8 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.post('/:id/activate', async (req: AuthenticatedRequest, res) => {
   try {
-    await Persona.updateMany(
-      { userId: req.user!.dbUserId, isActive: true },
-      { $set: { isActive: false } }
-    );
-
-    const persona = await Persona.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user!.dbUserId },
-      { $set: { isActive: true } },
-      { new: true }
-    );
+    const id = req.params.id as string;
+    const persona = await Persona.activate(id, req.user!.dbUserId);
 
     if (!persona) {
       return res.status(404).json({
@@ -157,17 +155,17 @@ router.post('/:id/activate', async (req: AuthenticatedRequest, res) => {
 
 router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const persona = await Persona.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user!.dbUserId,
-    });
+    const id = req.params.id as string;
+    const existingPersona = await Persona.findById(id);
 
-    if (!persona) {
+    if (!existingPersona || existingPersona.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Persona not found',
       } as ApiResponse);
     }
+
+    await Persona.delete(id);
 
     res.json({
       success: true,

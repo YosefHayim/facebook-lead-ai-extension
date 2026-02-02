@@ -60,7 +60,7 @@ export async function requireAuth(
     req.user = {
       googleId: googleUser.sub,
       email: googleUser.email,
-      dbUserId: dbUser._id.toString(),
+      dbUserId: dbUser.id,
     };
 
     next();
@@ -93,7 +93,7 @@ export async function optionalAuth(
         req.user = {
           googleId: googleUser.sub,
           email: googleUser.email,
-          dbUserId: dbUser._id.toString(),
+          dbUserId: dbUser.id,
         };
       }
     }

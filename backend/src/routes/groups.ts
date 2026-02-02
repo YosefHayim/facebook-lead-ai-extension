@@ -30,12 +30,14 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 
 router.post('/', async (req: AuthenticatedRequest, res) => {
   try {
-    const groupData = req.body;
+    const groupData = req.body as {
+      name: string;
+      url: string;
+      category?: string;
+      isActive?: boolean;
+    };
 
-    const existing = await WatchedGroup.findOne({
-      userId: req.user!.dbUserId,
-      url: groupData.url,
-    });
+    const existing = await WatchedGroup.findByUrl(req.user!.dbUserId, groupData.url);
 
     if (existing) {
       return res.status(409).json({
@@ -82,12 +84,10 @@ router.get('/next', async (req: AuthenticatedRequest, res) => {
 
 router.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const group = await WatchedGroup.findOne({
-      _id: req.params.id,
-      userId: req.user!.dbUserId,
-    });
+    const id = req.params.id as string;
+    const group = await WatchedGroup.findById(id);
 
-    if (!group) {
+    if (!group || group.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
@@ -109,18 +109,17 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.patch('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const group = await WatchedGroup.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user!.dbUserId },
-      { $set: req.body },
-      { new: true }
-    );
+    const id = req.params.id as string;
+    const existingGroup = await WatchedGroup.findById(id);
 
-    if (!group) {
+    if (!existingGroup || existingGroup.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
       } as ApiResponse);
     }
+
+    const group = await WatchedGroup.update(id, req.body);
 
     res.json({
       success: true,
@@ -137,23 +136,20 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.post('/:id/visit', async (req: AuthenticatedRequest, res) => {
   try {
+    const id = req.params.id as string;
     const { leadsFound = 0 } = req.body as { leadsFound?: number };
 
-    const group = await WatchedGroup.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user!.dbUserId },
-      {
-        $set: { lastVisited: new Date() },
-        $inc: { leadsFound },
-      },
-      { new: true }
-    );
+    const existingGroup = await WatchedGroup.findById(id);
 
-    if (!group) {
+    if (!existingGroup || existingGroup.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
       } as ApiResponse);
     }
+
+    await WatchedGroup.incrementLeadsFound(id, leadsFound);
+    const group = await WatchedGroup.findById(id);
 
     res.json({
       success: true,
@@ -170,17 +166,17 @@ router.post('/:id/visit', async (req: AuthenticatedRequest, res) => {
 
 router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const group = await WatchedGroup.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user!.dbUserId,
-    });
+    const id = req.params.id as string;
+    const existingGroup = await WatchedGroup.findById(id);
 
-    if (!group) {
+    if (!existingGroup || existingGroup.userId !== req.user!.dbUserId) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
       } as ApiResponse);
     }
+
+    await WatchedGroup.delete(id);
 
     res.json({
       success: true,

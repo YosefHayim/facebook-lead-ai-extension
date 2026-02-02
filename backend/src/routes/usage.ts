@@ -55,20 +55,22 @@ router.post('/increment', async (req: AuthenticatedRequest, res) => {
       } as ApiResponse);
     }
 
-    if (!user.isWithinLimits(type)) {
+    if (!User.isWithinLimits(user, type)) {
       return res.status(403).json({
         success: false,
         error: `Monthly ${type} limit reached`,
       } as ApiResponse);
     }
 
-    await user.incrementUsage(type, amount);
+    await User.incrementUsage(user.id, type, amount);
+    
+    const updatedUser = await User.findById(user.id);
 
     res.json({
       success: true,
       data: {
-        usage: user.usage,
-        limits: user.limits,
+        usage: updatedUser?.usage,
+        limits: updatedUser?.limits,
       },
     } as ApiResponse);
   } catch (error) {
@@ -100,7 +102,7 @@ router.post('/check', async (req: AuthenticatedRequest, res) => {
       } as ApiResponse);
     }
 
-    const withinLimits = user.isWithinLimits(type);
+    const withinLimits = User.isWithinLimits(user, type);
     const current = type === 'leads' ? user.usage.leadsFoundThisMonth : user.usage.aiCallsThisMonth;
     const limit = type === 'leads' ? user.limits.leadsPerMonth : user.limits.aiCallsPerMonth;
 

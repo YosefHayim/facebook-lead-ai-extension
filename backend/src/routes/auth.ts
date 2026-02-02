@@ -44,20 +44,23 @@ router.post('/login', async (req, res) => {
         avatarUrl: tokenInfo.picture,
       });
     } else {
+      const updates: { name?: string; avatarUrl?: string } = {};
       if (tokenInfo.name && user.name !== tokenInfo.name) {
-        user.name = tokenInfo.name;
+        updates.name = tokenInfo.name;
       }
       if (tokenInfo.picture && user.avatarUrl !== tokenInfo.picture) {
-        user.avatarUrl = tokenInfo.picture;
+        updates.avatarUrl = tokenInfo.picture;
       }
-      await user.save();
+      if (Object.keys(updates).length > 0) {
+        user = await User.update(user.id, updates) ?? user;
+      }
     }
 
     res.json({
       success: true,
       data: {
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           name: user.name,
           avatarUrl: user.avatarUrl,
@@ -112,7 +115,7 @@ router.get('/me', async (req, res) => {
       success: true,
       data: {
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           name: user.name,
           avatarUrl: user.avatarUrl,

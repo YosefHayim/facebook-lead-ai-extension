@@ -15,13 +15,13 @@ export async function createCheckout(
 ) {
   try {
     const { plan } = req.body as { plan: SubscriptionPlan };
-    const userId = req.user?.supabaseId;
+    const dbUserId = req.user?.dbUserId;
 
-    if (!userId) {
+    if (!dbUserId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const user = await User.findBySupabaseId(userId);
+    const user = await User.findById(dbUserId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -36,11 +36,11 @@ export async function createCheckout(
     }
 
     const checkout = await createCheckoutSession({
-      userId: user._id.toString(),
+      userId: user.id,
       email: user.email,
       variantId,
       customData: {
-        supabase_id: userId,
+        user_id: user.id,
       },
     });
 
@@ -70,13 +70,13 @@ export async function getSubscriptionStatus(
   }>>
 ) {
   try {
-    const userId = req.user?.supabaseId;
+    const dbUserId = req.user?.dbUserId;
 
-    if (!userId) {
+    if (!dbUserId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const user = await User.findBySupabaseId(userId);
+    const user = await User.findById(dbUserId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -109,13 +109,13 @@ export async function cancelSubscription(
   res: Response<ApiResponse<{ message: string }>>
 ) {
   try {
-    const userId = req.user?.supabaseId;
+    const dbUserId = req.user?.dbUserId;
 
-    if (!userId) {
+    if (!dbUserId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const user = await User.findBySupabaseId(userId);
+    const user = await User.findById(dbUserId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -130,8 +130,7 @@ export async function cancelSubscription(
       return res.status(500).json({ success: false, error: 'Failed to cancel subscription' });
     }
 
-    user.subscription.cancelAtPeriodEnd = true;
-    await user.save();
+    await User.update(user.id, { cancelAtPeriodEnd: true });
 
     return res.json({
       success: true,
@@ -148,13 +147,13 @@ export async function resumeSubscription(
   res: Response<ApiResponse<{ message: string }>>
 ) {
   try {
-    const userId = req.user?.supabaseId;
+    const dbUserId = req.user?.dbUserId;
 
-    if (!userId) {
+    if (!dbUserId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const user = await User.findBySupabaseId(userId);
+    const user = await User.findById(dbUserId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -169,8 +168,7 @@ export async function resumeSubscription(
       return res.status(500).json({ success: false, error: 'Failed to resume subscription' });
     }
 
-    user.subscription.cancelAtPeriodEnd = false;
-    await user.save();
+    await User.update(user.id, { cancelAtPeriodEnd: false });
 
     return res.json({
       success: true,
@@ -187,13 +185,13 @@ export async function getCustomerPortalUrl(
   res: Response<ApiResponse<{ portalUrl: string }>>
 ) {
   try {
-    const userId = req.user?.supabaseId;
+    const dbUserId = req.user?.dbUserId;
 
-    if (!userId) {
+    if (!dbUserId) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const user = await User.findBySupabaseId(userId);
+    const user = await User.findById(dbUserId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
