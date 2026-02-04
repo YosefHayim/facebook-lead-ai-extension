@@ -70,6 +70,44 @@ export interface ILead {
   updatedAt: Date;
 }
 
+// ==================== Lead Feedback Types ====================
+export type LeadFeedbackQuality = 'good' | 'bad' | 'neutral';
+
+export interface ILeadFeedback {
+  userId: string;
+  leadId: string;
+  quality: LeadFeedbackQuality;
+  reason?: string;
+  createdAt: Date;
+}
+
+// ==================== Lead Context (LCI) Types ====================
+export interface ILeadContext {
+  userId: string;
+  leadId: string;
+  lci: Record<string, unknown>;
+  confidenceScore: number;
+  fetchedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ==================== Lead Notes Types ====================
+export interface ILeadNote {
+  userId: string;
+  leadId: string;
+  note: string;
+  createdAt: Date;
+}
+
+// ==================== Lead Tags Types ====================
+export interface ILeadTag {
+  userId: string;
+  leadId: string;
+  tag: string;
+  createdAt: Date;
+}
+
 // ==================== Persona Types ====================
 export type AITone = 'professional' | 'casual' | 'friendly' | 'expert';
 
@@ -111,6 +149,36 @@ export interface IAutomationSettings {
   lastScanAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// ==================== Scan Runs Types ====================
+export type ScanSource = 'manual' | 'auto';
+
+export interface IScanRun {
+  userId: string;
+  source: ScanSource;
+  groupId?: string;
+  groupName?: string;
+  startedAt: Date;
+  finishedAt?: Date;
+  postsFound: number;
+  leadsDetected: number;
+  errors?: Record<string, unknown> | null;
+  createdAt: Date;
+}
+
+// ==================== Automation Runs Types ====================
+export type AutomationRunStatus = 'running' | 'completed' | 'failed';
+
+export interface IAutomationRun {
+  userId: string;
+  status: AutomationRunStatus;
+  startedAt: Date;
+  finishedAt?: Date;
+  groupsScanned: number;
+  leadsFound: number;
+  error?: string;
+  createdAt: Date;
 }
 
 // ==================== Lemon Squeezy Types ====================

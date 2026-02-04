@@ -1,32 +1,61 @@
 import { Router } from 'express';
-import { Lead } from '../models/Lead.js';
-import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
-import type { AuthenticatedRequest, ApiResponse, LeadStatus, IntentType } from '../types/index.js';
+import type { AuthenticatedRequest, ApiResponse } from '../types/index.js';
+import {
+  leadBulkSchema,
+  leadCreateSchema,
+  leadListQuerySchema,
+  leadUpdateSchema,
+} from '../validators/leads.js';
+import {
+  leadContextUpsertSchema,
+  leadFeedbackCreateSchema,
+  leadNoteCreateSchema,
+  leadTagAddSchema,
+} from '../validators/lead-meta.js';
+import {
+  createLead,
+  createLeadsBulk,
+  deleteLead,
+  getLeadById,
+  getLeadStats,
+  listLeads,
+  updateLead,
+} from '../services/leads.js';
+import {
+  addLeadTags,
+  createLeadFeedback,
+  createLeadNote,
+  deleteLeadFeedback,
+  deleteLeadNote,
+  deleteLeadTag,
+  getLeadContext,
+  listLeadFeedback,
+  listLeadNotes,
+  listLeadTags,
+  upsertLeadContext,
+} from '../services/lead-meta.js';
 
 const router = Router();
 
 router.use(requireAuth);
 
 router.get('/', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadListQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid query parameters',
+    } as ApiResponse);
+  }
+
   try {
-    const { status, limit = '50', skip = '0' } = req.query;
-
-    const options: { status?: LeadStatus; limit?: number; skip?: number } = {
-      limit: parseInt(limit as string, 10),
-      skip: parseInt(skip as string, 10),
-    };
-
-    if (status && ['new', 'contacted', 'converted', 'ignored'].includes(status as string)) {
-      options.status = status as LeadStatus;
-    }
-
-    const leads = await Lead.findByUserId(req.user!.dbUserId, options);
-    const total = await Lead.countByUserId(req.user!.dbUserId, { status: options.status });
+    const { status, limit, skip } = parsed.data;
+    const data = await listLeads(req.user!.dbUserId, { status, limit, skip });
 
     res.json({
       success: true,
-      data: { leads, total },
+      data,
     } as ApiResponse);
   } catch (error) {
     console.error('[Leads] List error:', error);
@@ -38,49 +67,33 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid lead payload',
+    } as ApiResponse);
+  }
+
   try {
-    const leadData = req.body as {
-      postUrl: string;
-      postText: string;
-      authorName: string;
-      authorProfileUrl: string;
-      groupName?: string;
-      intent: IntentType;
-      leadScore: number;
-      aiAnalysis?: {
-        intent: IntentType;
-        confidence: number;
-        reasoning: string;
-        keywords: string[];
-      };
-      aiDraftReply?: string;
-    };
+    const result = await createLead(req.user!.dbUserId, parsed.data);
 
-    const user = await User.findById(req.user!.dbUserId);
-    if (!user) {
-      return res.status(404).json({
+    if ('error' in result) {
+      const status =
+        result.error === 'User not found'
+          ? 404
+          : result.error === 'Lead already exists'
+            ? 409
+            : 403;
+      return res.status(status).json({
         success: false,
-        error: 'User not found',
+        error: result.error,
       } as ApiResponse);
     }
-
-    if (!User.isWithinLimits(user, 'leads')) {
-      return res.status(403).json({
-        success: false,
-        error: 'Monthly lead limit reached',
-      } as ApiResponse);
-    }
-
-    const lead = await Lead.create({
-      ...leadData,
-      userId: req.user!.dbUserId,
-    });
-
-    await User.incrementUsage(user.id, 'leads');
 
     res.status(201).json({
       success: true,
-      data: { lead },
+      data: { lead: result.lead },
     } as ApiResponse);
   } catch (error) {
     console.error('[Leads] Create error:', error);
@@ -92,57 +105,31 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/bulk', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadBulkSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid leads payload',
+    } as ApiResponse);
+  }
+
   try {
-    const { leads: leadsData } = req.body as { leads: Array<{
-      postUrl: string;
-      postText: string;
-      authorName: string;
-      authorProfileUrl: string;
-      groupName?: string;
-      intent: IntentType;
-      leadScore: number;
-      aiAnalysis?: {
-        intent: IntentType;
-        confidence: number;
-        reasoning: string;
-        keywords: string[];
-      };
-      aiDraftReply?: string;
-    }> };
+    const result = await createLeadsBulk(req.user!.dbUserId, parsed.data.leads);
 
-    if (!Array.isArray(leadsData)) {
-      return res.status(400).json({
+    if ('error' in result) {
+      const status = result.error === 'User not found' ? 404 : 403;
+      return res.status(status).json({
         success: false,
-        error: 'Leads must be an array',
+        error: result.error,
       } as ApiResponse);
     }
-
-    const user = await User.findById(req.user!.dbUserId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      } as ApiResponse);
-    }
-
-    const remaining = user.limits.leadsPerMonth - user.usage.leadsFoundThisMonth;
-    const toCreate = leadsData.slice(0, remaining);
-
-    const leads = await Lead.createBulk(
-      toCreate.map((lead) => ({
-        ...lead,
-        userId: req.user!.dbUserId,
-      }))
-    );
-
-    await User.incrementUsage(user.id, 'leads', leads.length);
 
     res.status(201).json({
       success: true,
       data: {
-        leads,
-        created: leads.length,
-        skipped: leadsData.length - leads.length,
+        leads: result.leads,
+        created: result.created,
+        skipped: result.skipped,
       },
     } as ApiResponse);
   } catch (error) {
@@ -156,7 +143,7 @@ router.post('/bulk', async (req: AuthenticatedRequest, res) => {
 
 router.get('/stats/summary', async (req: AuthenticatedRequest, res) => {
   try {
-    const stats = await Lead.getStats(req.user!.dbUserId);
+    const stats = await getLeadStats(req.user!.dbUserId);
 
     res.json({
       success: true,
@@ -175,22 +162,295 @@ router.get('/stats/summary', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-router.get('/:id', async (req: AuthenticatedRequest, res) => {
+router.get('/:id/feedback', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const lead = await Lead.findById(id);
-
-    if (!lead || lead.userId !== req.user!.dbUserId) {
+    const feedback = await listLeadFeedback(req.user!.dbUserId, req.params.id);
+    if (!feedback) {
       return res.status(404).json({
         success: false,
         error: 'Lead not found',
       } as ApiResponse);
     }
 
-    res.json({
-      success: true,
-      data: { lead },
+    res.json({ success: true, data: { feedback } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Feedback list error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch feedback',
     } as ApiResponse);
+  }
+});
+
+router.post('/:id/feedback', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadFeedbackCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid feedback payload',
+    } as ApiResponse);
+  }
+
+  try {
+    const feedback = await createLeadFeedback(req.user!.dbUserId, req.params.id, parsed.data);
+    if (!feedback) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: { feedback },
+    } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Feedback create error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create feedback',
+    } as ApiResponse);
+  }
+});
+
+router.delete('/:id/feedback/:feedbackId', async (req: AuthenticatedRequest, res) => {
+  try {
+    const deleted = await deleteLeadFeedback(req.user!.dbUserId, req.params.id, req.params.feedbackId);
+    if (deleted === null) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Feedback not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, message: 'Feedback deleted' } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Feedback delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete feedback',
+    } as ApiResponse);
+  }
+});
+
+router.get('/:id/context', async (req: AuthenticatedRequest, res) => {
+  try {
+    const context = await getLeadContext(req.user!.dbUserId, req.params.id);
+    if (context === null) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, data: { context } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Context get error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch context',
+    } as ApiResponse);
+  }
+});
+
+router.put('/:id/context', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadContextUpsertSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid context payload',
+    } as ApiResponse);
+  }
+
+  try {
+    const context = await upsertLeadContext(req.user!.dbUserId, req.params.id, {
+      lci: parsed.data.lci,
+      confidenceScore: parsed.data.confidenceScore,
+      fetchedAt: parsed.data.fetchedAt ? new Date(parsed.data.fetchedAt) : undefined,
+    });
+
+    if (!context) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, data: { context } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Context upsert error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update context',
+    } as ApiResponse);
+  }
+});
+
+router.get('/:id/notes', async (req: AuthenticatedRequest, res) => {
+  try {
+    const notes = await listLeadNotes(req.user!.dbUserId, req.params.id);
+    if (!notes) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, data: { notes } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Notes list error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch notes',
+    } as ApiResponse);
+  }
+});
+
+router.post('/:id/notes', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadNoteCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid note payload',
+    } as ApiResponse);
+  }
+
+  try {
+    const note = await createLeadNote(req.user!.dbUserId, req.params.id, parsed.data.note);
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.status(201).json({ success: true, data: { note } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Note create error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create note',
+    } as ApiResponse);
+  }
+});
+
+router.delete('/:id/notes/:noteId', async (req: AuthenticatedRequest, res) => {
+  try {
+    const deleted = await deleteLeadNote(req.user!.dbUserId, req.params.id, req.params.noteId);
+    if (deleted === null) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Note not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, message: 'Note deleted' } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Note delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete note',
+    } as ApiResponse);
+  }
+});
+
+router.get('/:id/tags', async (req: AuthenticatedRequest, res) => {
+  try {
+    const tags = await listLeadTags(req.user!.dbUserId, req.params.id);
+    if (!tags) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, data: { tags } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Tags list error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch tags',
+    } as ApiResponse);
+  }
+});
+
+router.post('/:id/tags', async (req: AuthenticatedRequest, res) => {
+  const parsed = leadTagAddSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid tags payload',
+    } as ApiResponse);
+  }
+
+  try {
+    const tags = await addLeadTags(req.user!.dbUserId, req.params.id, parsed.data.tags);
+    if (!tags) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.status(201).json({ success: true, data: { tags } } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Tags add error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add tags',
+    } as ApiResponse);
+  }
+});
+
+router.delete('/:id/tags/:tagId', async (req: AuthenticatedRequest, res) => {
+  try {
+    const deleted = await deleteLeadTag(req.user!.dbUserId, req.params.id, req.params.tagId);
+    if (deleted === null) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tag not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, message: 'Tag deleted' } as ApiResponse);
+  } catch (error) {
+    console.error('[Leads] Tag delete error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete tag',
+    } as ApiResponse);
+  }
+});
+
+router.get('/:id', async (req: AuthenticatedRequest, res) => {
+  try {
+    const lead = await getLeadById(req.user!.dbUserId, req.params.id);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        error: 'Lead not found',
+      } as ApiResponse);
+    }
+
+    res.json({ success: true, data: { lead } } as ApiResponse);
   } catch (error) {
     console.error('[Leads] Get error:', error);
     res.status(500).json({
@@ -201,23 +461,44 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 });
 
 router.patch('/:id', async (req: AuthenticatedRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    const existingLead = await Lead.findById(id);
+  const parsed = leadUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid lead update payload',
+    } as ApiResponse);
+  }
 
-    if (!existingLead || existingLead.userId !== req.user!.dbUserId) {
+  try {
+    const updates = parsed.data;
+    const responseTracking = updates.responseTracking
+      ? {
+          responded: updates.responseTracking.responded,
+          responseText: updates.responseTracking.responseText,
+          respondedAt: updates.responseTracking.respondedAt
+            ? new Date(updates.responseTracking.respondedAt)
+            : undefined,
+          gotReply: updates.responseTracking.gotReply,
+          repliedAt: updates.responseTracking.repliedAt
+            ? new Date(updates.responseTracking.repliedAt)
+            : undefined,
+        }
+      : undefined;
+
+    const lead = await updateLead(req.user!.dbUserId, req.params.id, {
+      status: updates.status,
+      aiDraftReply: updates.aiDraftReply,
+      responseTracking,
+    });
+
+    if (!lead) {
       return res.status(404).json({
         success: false,
         error: 'Lead not found',
       } as ApiResponse);
     }
 
-    const lead = await Lead.update(id, req.body);
-
-    res.json({
-      success: true,
-      data: { lead },
-    } as ApiResponse);
+    res.json({ success: true, data: { lead } } as ApiResponse);
   } catch (error) {
     console.error('[Leads] Update error:', error);
     res.status(500).json({
@@ -229,22 +510,15 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const existingLead = await Lead.findById(id);
-
-    if (!existingLead || existingLead.userId !== req.user!.dbUserId) {
+    const deleted = await deleteLead(req.user!.dbUserId, req.params.id);
+    if (!deleted) {
       return res.status(404).json({
         success: false,
         error: 'Lead not found',
       } as ApiResponse);
     }
 
-    await Lead.delete(id);
-
-    res.json({
-      success: true,
-      message: 'Lead deleted',
-    } as ApiResponse);
+    res.json({ success: true, message: 'Lead deleted' } as ApiResponse);
   } catch (error) {
     console.error('[Leads] Delete error:', error);
     res.status(500).json({

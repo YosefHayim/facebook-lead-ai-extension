@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { AuthenticatedRequest, ApiResponse } from '../types/index.js';
+import { usageCheckSchema, usageIncrementSchema } from '../validators/usage.js';
+import { checkUsageLimit, getUsage, incrementUsage } from '../services/usage.js';
 
 const router = Router();
 
@@ -9,9 +10,9 @@ router.use(requireAuth);
 
 router.get('/', async (req: AuthenticatedRequest, res) => {
   try {
-    const user = await User.findById(req.user!.dbUserId);
+    const data = await getUsage(req.user!.dbUserId);
 
-    if (!user) {
+    if (!data) {
       return res.status(404).json({
         success: false,
         error: 'User not found',
@@ -20,11 +21,7 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 
     res.json({
       success: true,
-      data: {
-        usage: user.usage,
-        limits: user.limits,
-        plan: user.subscription.plan,
-      },
+      data,
     } as ApiResponse);
   } catch (error) {
     console.error('[Usage] Get error:', error);
@@ -36,42 +33,28 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/increment', async (req: AuthenticatedRequest, res) => {
+  const parsed = usageIncrementSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid usage payload',
+    } as ApiResponse);
+  }
+
   try {
-    const { type, amount = 1 } = req.body as { type: 'leads' | 'aiCalls'; amount?: number };
+    const result = await incrementUsage(req.user!.dbUserId, parsed.data.type, parsed.data.amount ?? 1);
 
-    if (!type || !['leads', 'aiCalls'].includes(type)) {
-      return res.status(400).json({
+    if ('error' in result) {
+      const status = result.error === 'User not found' ? 404 : 403;
+      return res.status(status).json({
         success: false,
-        error: 'Invalid usage type',
+        error: result.error,
       } as ApiResponse);
     }
-
-    const user = await User.findById(req.user!.dbUserId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      } as ApiResponse);
-    }
-
-    if (!User.isWithinLimits(user, type)) {
-      return res.status(403).json({
-        success: false,
-        error: `Monthly ${type} limit reached`,
-      } as ApiResponse);
-    }
-
-    await User.incrementUsage(user.id, type, amount);
-    
-    const updatedUser = await User.findById(user.id);
 
     res.json({
       success: true,
-      data: {
-        usage: updatedUser?.usage,
-        limits: updatedUser?.limits,
-      },
+      data: result,
     } as ApiResponse);
   } catch (error) {
     console.error('[Usage] Increment error:', error);
@@ -83,37 +66,27 @@ router.post('/increment', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/check', async (req: AuthenticatedRequest, res) => {
+  const parsed = usageCheckSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid usage payload',
+    } as ApiResponse);
+  }
+
   try {
-    const { type } = req.body as { type: 'leads' | 'aiCalls' };
+    const data = await checkUsageLimit(req.user!.dbUserId, parsed.data.type);
 
-    if (!type || !['leads', 'aiCalls'].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid usage type',
-      } as ApiResponse);
-    }
-
-    const user = await User.findById(req.user!.dbUserId);
-
-    if (!user) {
+    if (!data) {
       return res.status(404).json({
         success: false,
         error: 'User not found',
       } as ApiResponse);
     }
 
-    const withinLimits = User.isWithinLimits(user, type);
-    const current = type === 'leads' ? user.usage.leadsFoundThisMonth : user.usage.aiCallsThisMonth;
-    const limit = type === 'leads' ? user.limits.leadsPerMonth : user.limits.aiCallsPerMonth;
-
     res.json({
       success: true,
-      data: {
-        allowed: withinLimits,
-        current,
-        limit,
-        remaining: Math.max(0, limit - current),
-      },
+      data,
     } as ApiResponse);
   } catch (error) {
     console.error('[Usage] Check error:', error);

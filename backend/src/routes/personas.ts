@@ -1,7 +1,16 @@
 import { Router } from 'express';
-import { Persona } from '../models/Persona.js';
 import { requireAuth } from '../middleware/auth.js';
-import type { AuthenticatedRequest, ApiResponse, AITone } from '../types/index.js';
+import type { AuthenticatedRequest, ApiResponse } from '../types/index.js';
+import { personaCreateSchema, personaUpdateSchema } from '../validators/personas.js';
+import {
+  activatePersona,
+  createPersona,
+  deletePersona,
+  getActivePersona,
+  getPersonaById,
+  listPersonas,
+  updatePersona,
+} from '../services/personas.js';
 
 const router = Router();
 
@@ -9,11 +18,7 @@ router.use(requireAuth);
 
 router.get('/', async (req: AuthenticatedRequest, res) => {
   try {
-    const { activeOnly } = req.query;
-
-    const personas = await Persona.findByUserId(req.user!.dbUserId, {
-      activeOnly: activeOnly === 'true',
-    });
+    const personas = await listPersonas(req.user!.dbUserId, req.query.activeOnly === 'true');
 
     res.json({
       success: true,
@@ -29,22 +34,16 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/', async (req: AuthenticatedRequest, res) => {
-  try {
-    const personaData = req.body as {
-      name: string;
-      role: string;
-      keywords?: string[];
-      negativeKeywords?: string[];
-      aiTone?: AITone;
-      valueProposition: string;
-      signature?: string;
-      isActive?: boolean;
-    };
+  const parsed = personaCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid persona payload',
+    } as ApiResponse);
+  }
 
-    const persona = await Persona.create({
-      ...personaData,
-      userId: req.user!.dbUserId,
-    });
+  try {
+    const persona = await createPersona(req.user!.dbUserId, parsed.data);
 
     res.status(201).json({
       success: true,
@@ -61,7 +60,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 
 router.get('/active', async (req: AuthenticatedRequest, res) => {
   try {
-    const persona = await Persona.findActivePersona(req.user!.dbUserId);
+    const persona = await getActivePersona(req.user!.dbUserId);
 
     res.json({
       success: true,
@@ -78,10 +77,9 @@ router.get('/active', async (req: AuthenticatedRequest, res) => {
 
 router.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const persona = await Persona.findById(id);
+    const persona = await getPersonaById(req.user!.dbUserId, req.params.id);
 
-    if (!persona || persona.userId !== req.user!.dbUserId) {
+    if (!persona) {
       return res.status(404).json({
         success: false,
         error: 'Persona not found',
@@ -102,18 +100,23 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 });
 
 router.patch('/:id', async (req: AuthenticatedRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    const existingPersona = await Persona.findById(id);
+  const parsed = personaUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid persona update payload',
+    } as ApiResponse);
+  }
 
-    if (!existingPersona || existingPersona.userId !== req.user!.dbUserId) {
+  try {
+    const persona = await updatePersona(req.user!.dbUserId, req.params.id, parsed.data);
+
+    if (!persona) {
       return res.status(404).json({
         success: false,
         error: 'Persona not found',
       } as ApiResponse);
     }
-
-    const persona = await Persona.update(id, req.body);
 
     res.json({
       success: true,
@@ -130,8 +133,7 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 
 router.post('/:id/activate', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const persona = await Persona.activate(id, req.user!.dbUserId);
+    const persona = await activatePersona(req.user!.dbUserId, req.params.id);
 
     if (!persona) {
       return res.status(404).json({
@@ -155,17 +157,14 @@ router.post('/:id/activate', async (req: AuthenticatedRequest, res) => {
 
 router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const existingPersona = await Persona.findById(id);
+    const deleted = await deletePersona(req.user!.dbUserId, req.params.id);
 
-    if (!existingPersona || existingPersona.userId !== req.user!.dbUserId) {
+    if (!deleted) {
       return res.status(404).json({
         success: false,
         error: 'Persona not found',
       } as ApiResponse);
     }
-
-    await Persona.delete(id);
 
     res.json({
       success: true,
