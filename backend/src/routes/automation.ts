@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { AutomationSettings } from '../models/AutomationSettings.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { AuthenticatedRequest, ApiResponse } from '../types/index.js';
+import { automationSettingsUpdateSchema } from '../validators/automation.js';
+import { getAutomationSettings, recordScanComplete, updateAutomationSettings } from '../services/automation.js';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ router.use(requireAuth);
 
 router.get('/settings', async (req: AuthenticatedRequest, res) => {
   try {
-    const settings = await AutomationSettings.findOrCreate(req.user!.dbUserId);
+    const settings = await getAutomationSettings(req.user!.dbUserId);
 
     res.json({
       success: true,
@@ -25,14 +26,20 @@ router.get('/settings', async (req: AuthenticatedRequest, res) => {
 });
 
 router.patch('/settings', async (req: AuthenticatedRequest, res) => {
+  const parsed = automationSettingsUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid automation settings payload',
+    } as ApiResponse);
+  }
+
   try {
-    let settings = await AutomationSettings.findByUserId(req.user!.dbUserId);
-
-    if (!settings) {
-      settings = await AutomationSettings.findOrCreate(req.user!.dbUserId);
-    }
-
-    settings = await AutomationSettings.updateByUserId(req.user!.dbUserId, req.body);
+    const updates = parsed.data;
+    const settings = await updateAutomationSettings(req.user!.dbUserId, {
+      ...updates,
+      lastScanAt: updates.lastScanAt ? new Date(updates.lastScanAt) : undefined,
+    });
 
     res.json({
       success: true,
@@ -49,7 +56,7 @@ router.patch('/settings', async (req: AuthenticatedRequest, res) => {
 
 router.post('/scan-complete', async (req: AuthenticatedRequest, res) => {
   try {
-    await AutomationSettings.updateLastScan(req.user!.dbUserId);
+    await recordScanComplete(req.user!.dbUserId);
 
     res.json({
       success: true,
