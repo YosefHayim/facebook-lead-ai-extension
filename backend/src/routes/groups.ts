@@ -1,7 +1,16 @@
 import { Router } from 'express';
-import { WatchedGroup } from '../models/WatchedGroup.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { AuthenticatedRequest, ApiResponse } from '../types/index.js';
+import { groupCreateSchema, groupUpdateSchema, groupVisitSchema } from '../validators/groups.js';
+import {
+  createGroup,
+  deleteGroup,
+  getGroupById,
+  getNextGroupToVisit,
+  listGroups,
+  recordGroupVisit,
+  updateGroup,
+} from '../services/groups.js';
 
 const router = Router();
 
@@ -9,11 +18,7 @@ router.use(requireAuth);
 
 router.get('/', async (req: AuthenticatedRequest, res) => {
   try {
-    const { activeOnly } = req.query;
-
-    const groups = await WatchedGroup.findByUserId(req.user!.dbUserId, {
-      activeOnly: activeOnly === 'true',
-    });
+    const groups = await listGroups(req.user!.dbUserId, req.query.activeOnly === 'true');
 
     res.json({
       success: true,
@@ -29,32 +34,28 @@ router.get('/', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/', async (req: AuthenticatedRequest, res) => {
+  const parsed = groupCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid group payload',
+    } as ApiResponse);
+  }
+
   try {
-    const groupData = req.body as {
-      name: string;
-      url: string;
-      category?: string;
-      isActive?: boolean;
-    };
+    const result = await createGroup(req.user!.dbUserId, parsed.data);
 
-    const existing = await WatchedGroup.findByUrl(req.user!.dbUserId, groupData.url);
-
-    if (existing) {
+    if ('error' in result) {
       return res.status(409).json({
         success: false,
-        error: 'Group already exists',
-        data: { group: existing },
+        error: result.error,
+        data: { group: result.group },
       } as ApiResponse);
     }
 
-    const group = await WatchedGroup.create({
-      ...groupData,
-      userId: req.user!.dbUserId,
-    });
-
     res.status(201).json({
       success: true,
-      data: { group },
+      data: { group: result.group },
     } as ApiResponse);
   } catch (error) {
     console.error('[Groups] Create error:', error);
@@ -67,7 +68,7 @@ router.post('/', async (req: AuthenticatedRequest, res) => {
 
 router.get('/next', async (req: AuthenticatedRequest, res) => {
   try {
-    const group = await WatchedGroup.findNextToVisit(req.user!.dbUserId);
+    const group = await getNextGroupToVisit(req.user!.dbUserId);
 
     res.json({
       success: true,
@@ -84,10 +85,9 @@ router.get('/next', async (req: AuthenticatedRequest, res) => {
 
 router.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const group = await WatchedGroup.findById(id);
+    const group = await getGroupById(req.user!.dbUserId, req.params.id);
 
-    if (!group || group.userId !== req.user!.dbUserId) {
+    if (!group) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
@@ -108,18 +108,27 @@ router.get('/:id', async (req: AuthenticatedRequest, res) => {
 });
 
 router.patch('/:id', async (req: AuthenticatedRequest, res) => {
-  try {
-    const id = req.params.id as string;
-    const existingGroup = await WatchedGroup.findById(id);
+  const parsed = groupUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid group update payload',
+    } as ApiResponse);
+  }
 
-    if (!existingGroup || existingGroup.userId !== req.user!.dbUserId) {
+  try {
+    const updates = parsed.data;
+    const group = await updateGroup(req.user!.dbUserId, req.params.id, {
+      ...updates,
+      lastVisited: updates.lastVisited ? new Date(updates.lastVisited) : undefined,
+    });
+
+    if (!group) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
       } as ApiResponse);
     }
-
-    const group = await WatchedGroup.update(id, req.body);
 
     res.json({
       success: true,
@@ -135,21 +144,23 @@ router.patch('/:id', async (req: AuthenticatedRequest, res) => {
 });
 
 router.post('/:id/visit', async (req: AuthenticatedRequest, res) => {
+  const parsed = groupVisitSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid visit payload',
+    } as ApiResponse);
+  }
+
   try {
-    const id = req.params.id as string;
-    const { leadsFound = 0 } = req.body as { leadsFound?: number };
+    const group = await recordGroupVisit(req.user!.dbUserId, req.params.id, parsed.data.leadsFound ?? 0);
 
-    const existingGroup = await WatchedGroup.findById(id);
-
-    if (!existingGroup || existingGroup.userId !== req.user!.dbUserId) {
+    if (!group) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
       } as ApiResponse);
     }
-
-    await WatchedGroup.incrementLeadsFound(id, leadsFound);
-    const group = await WatchedGroup.findById(id);
 
     res.json({
       success: true,
@@ -166,17 +177,14 @@ router.post('/:id/visit', async (req: AuthenticatedRequest, res) => {
 
 router.delete('/:id', async (req: AuthenticatedRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const existingGroup = await WatchedGroup.findById(id);
+    const deleted = await deleteGroup(req.user!.dbUserId, req.params.id);
 
-    if (!existingGroup || existingGroup.userId !== req.user!.dbUserId) {
+    if (!deleted) {
       return res.status(404).json({
         success: false,
         error: 'Group not found',
       } as ApiResponse);
     }
-
-    await WatchedGroup.delete(id);
 
     res.json({
       success: true,

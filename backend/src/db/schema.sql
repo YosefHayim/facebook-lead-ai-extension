@@ -63,6 +63,60 @@ CREATE INDEX IF NOT EXISTS idx_leads_user_id ON leads(user_id);
 CREATE INDEX IF NOT EXISTS idx_leads_user_id_created_at ON leads(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_user_id_status ON leads(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_leads_user_id_intent ON leads(user_id, intent);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_user_post_url ON leads(user_id, post_url);
+
+-- Lead Feedback table
+CREATE TABLE IF NOT EXISTS lead_feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  quality VARCHAR(10) NOT NULL CHECK (quality IN ('good', 'bad', 'neutral')),
+  reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lead_feedback_lead_id ON lead_feedback(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_feedback_user_id ON lead_feedback(user_id);
+
+-- Lead Context (LCI) table
+CREATE TABLE IF NOT EXISTS lead_context (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL UNIQUE REFERENCES leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  lci JSONB NOT NULL,
+  confidence_score INTEGER NOT NULL DEFAULT 0 CHECK (confidence_score >= 0 AND confidence_score <= 100),
+  fetched_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lead_context_lead_id ON lead_context(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_context_user_id ON lead_context(user_id);
+
+-- Lead Notes table
+CREATE TABLE IF NOT EXISTS lead_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  note TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lead_notes_lead_id ON lead_notes(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_notes_user_id ON lead_notes(user_id);
+
+-- Lead Tags table
+CREATE TABLE IF NOT EXISTS lead_tags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tag VARCHAR(100) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (lead_id, tag)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lead_tags_lead_id ON lead_tags(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_tags_user_id ON lead_tags(user_id);
 
 -- Personas table
 CREATE TABLE IF NOT EXISTS personas (
@@ -121,6 +175,39 @@ CREATE TABLE IF NOT EXISTS automation_settings (
 
 CREATE INDEX IF NOT EXISTS idx_automation_settings_user_id ON automation_settings(user_id);
 
+-- Scan Runs table
+CREATE TABLE IF NOT EXISTS scan_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source VARCHAR(20) NOT NULL CHECK (source IN ('manual', 'auto')),
+  group_id UUID REFERENCES watched_groups(id) ON DELETE SET NULL,
+  group_name VARCHAR(255),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  posts_found INTEGER NOT NULL DEFAULT 0,
+  leads_detected INTEGER NOT NULL DEFAULT 0,
+  errors JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scan_runs_user_id ON scan_runs(user_id);
+CREATE INDEX IF NOT EXISTS idx_scan_runs_group_id ON scan_runs(group_id);
+
+-- Automation Runs table
+CREATE TABLE IF NOT EXISTS automation_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  groups_scanned INTEGER NOT NULL DEFAULT 0,
+  leads_found INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_automation_runs_user_id ON automation_runs(user_id);
+
 -- Trigger function to auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -145,3 +232,6 @@ CREATE TRIGGER update_watched_groups_updated_at BEFORE UPDATE ON watched_groups 
 
 DROP TRIGGER IF EXISTS update_automation_settings_updated_at ON automation_settings;
 CREATE TRIGGER update_automation_settings_updated_at BEFORE UPDATE ON automation_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_lead_context_updated_at ON lead_context;
+CREATE TRIGGER update_lead_context_updated_at BEFORE UPDATE ON lead_context FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

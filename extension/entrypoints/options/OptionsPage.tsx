@@ -3,7 +3,7 @@ import { Check, Settings, Shield, Sparkles, User as UserIcon, Zap } from "lucide
 import type { ExtensionSettings, Persona, UserSubscription } from "../../src/types";
 import { activePersonaIdStorage, leadsStorage, personasStorage, settingsStorage } from "../../src/lib/storage";
 import { authService, authStateStorage } from "../../src/lib/auth";
-import { createLeadsBulk, createPersona } from "../../src/lib/api";
+import { syncAllToCloud } from "../../src/lib/cloud-sync";
 import { useEffect, useState } from "react";
 
 import type { AuthUser } from "../../src/lib/auth";
@@ -93,44 +93,7 @@ export function OptionsPage() {
 
   const handleSyncToCloud = async () => {
     const leads = await leadsStorage.getValue();
-    const apiLeads = leads.map((l) => ({
-      postUrl: l.postUrl,
-      postText: l.postText,
-      authorName: l.authorName,
-      authorProfileUrl: l.authorProfileUrl,
-      groupName: l.groupName,
-      intent: l.intent,
-      leadScore: l.leadScore,
-      aiAnalysis:
-        l.aiAnalysis ?
-          { intent: l.aiAnalysis.intent, confidence: l.aiAnalysis.confidence, reasoning: l.aiAnalysis.reasoning, keywords: l.aiAnalysis.keywords }
-        : undefined,
-      aiDraftReply: l.aiDraftReply,
-      status: l.status,
-      responseTracking:
-        l.responseTracking ?
-          {
-            responded: l.responseTracking.responded,
-            responseText: l.responseTracking.responseText,
-            respondedAt: l.responseTracking.respondedAt ? new Date(l.responseTracking.respondedAt).toISOString() : undefined,
-          }
-        : undefined,
-    }));
-    if (apiLeads.length > 0) {
-      await createLeadsBulk(apiLeads);
-    }
-    for (const p of personas) {
-      await createPersona({
-        name: p.name,
-        role: p.role,
-        keywords: p.keywords,
-        negativeKeywords: p.negativeKeywords,
-        aiTone: p.aiTone,
-        valueProposition: p.valueProposition,
-        signature: p.signature,
-        isActive: p.isActive,
-      });
-    }
+    await syncAllToCloud({ leads, personas });
   };
 
   return (

@@ -57,6 +57,50 @@ function rowToLead(row: LeadRow): ILead & { id: string } {
 }
 
 export const Lead = {
+  async createWithUsage(data: {
+    userId: string;
+    postUrl: string;
+    postText: string;
+    authorName: string;
+    authorProfileUrl: string;
+    groupName?: string;
+    intent: IntentType;
+    leadScore: number;
+    aiAnalysis?: {
+      intent: IntentType;
+      confidence: number;
+      reasoning: string;
+      keywords: string[];
+    };
+    aiDraftReply?: string;
+  }): Promise<(ILead & { id: string }) | null> {
+    const sql = getDb();
+    const rows = await sql`
+      WITH inserted AS (
+        INSERT INTO leads (
+          user_id, post_url, post_text, author_name, author_profile_url,
+          group_name, intent, lead_score, ai_analysis, ai_draft_reply
+        )
+        VALUES (
+          ${data.userId}, ${data.postUrl}, ${data.postText}, ${data.authorName}, ${data.authorProfileUrl},
+          ${data.groupName ?? null}, ${data.intent}, ${data.leadScore},
+          ${data.aiAnalysis ? JSON.stringify(data.aiAnalysis) : null}::jsonb,
+          ${data.aiDraftReply ?? null}
+        )
+        ON CONFLICT (user_id, post_url) DO NOTHING
+        RETURNING *
+      ),
+      usage_update AS (
+        UPDATE users
+        SET leads_found_this_month = leads_found_this_month + (SELECT COUNT(*) FROM inserted)
+        WHERE id = ${data.userId}
+        RETURNING id
+      )
+      SELECT * FROM inserted
+    `;
+    if (rows.length === 0) return null;
+    return rowToLead(rows[0] as LeadRow);
+  },
   async findById(id: string): Promise<(ILead & { id: string }) | null> {
     const sql = getDb();
     const rows = await sql`SELECT * FROM leads WHERE id = ${id}`;
@@ -176,13 +220,116 @@ export const Lead = {
     aiDraftReply?: string;
   }>): Promise<(ILead & { id: string })[]> {
     if (leads.length === 0) return [];
-    
-    const results: (ILead & { id: string })[] = [];
-    for (const lead of leads) {
-      const created = await Lead.create(lead);
-      results.push(created);
-    }
-    return results;
+
+    const sql = getDb();
+    const userIds = leads.map((lead) => lead.userId);
+    const postUrls = leads.map((lead) => lead.postUrl);
+    const postTexts = leads.map((lead) => lead.postText);
+    const authorNames = leads.map((lead) => lead.authorName);
+    const authorProfileUrls = leads.map((lead) => lead.authorProfileUrl);
+    const groupNames = leads.map((lead) => lead.groupName ?? null);
+    const intents = leads.map((lead) => lead.intent);
+    const leadScores = leads.map((lead) => lead.leadScore);
+    const aiAnalyses = leads.map((lead) =>
+      lead.aiAnalysis ? JSON.stringify(lead.aiAnalysis) : null
+    );
+    const aiDraftReplies = leads.map((lead) => lead.aiDraftReply ?? null);
+
+    const rows = await sql`
+      INSERT INTO leads (
+        user_id, post_url, post_text, author_name, author_profile_url,
+        group_name, intent, lead_score, ai_analysis, ai_draft_reply
+      )
+      SELECT * FROM UNNEST(
+        ${userIds}::uuid[],
+        ${postUrls}::text[],
+        ${postTexts}::text[],
+        ${authorNames}::text[],
+        ${authorProfileUrls}::text[],
+        ${groupNames}::text[],
+        ${intents}::text[],
+        ${leadScores}::int[],
+        ${aiAnalyses}::jsonb[],
+        ${aiDraftReplies}::text[]
+      )
+      ON CONFLICT (user_id, post_url) DO NOTHING
+      RETURNING *
+    `;
+
+    return rows.map((row) => rowToLead(row as LeadRow));
+  },
+
+  async createBulkWithUsage(params: {
+    userId: string;
+    leads: Array<{
+      postUrl: string;
+      postText: string;
+      authorName: string;
+      authorProfileUrl: string;
+      groupName?: string;
+      intent: IntentType;
+      leadScore: number;
+      aiAnalysis?: {
+        intent: IntentType;
+        confidence: number;
+        reasoning: string;
+        keywords: string[];
+      };
+      aiDraftReply?: string;
+    }>;
+  }): Promise<{ leads: (ILead & { id: string })[]; created: number; skipped: number }> {
+    if (params.leads.length === 0) return { leads: [], created: 0, skipped: 0 };
+
+    const sql = getDb();
+    const userIds = params.leads.map(() => params.userId);
+    const postUrls = params.leads.map((lead) => lead.postUrl);
+    const postTexts = params.leads.map((lead) => lead.postText);
+    const authorNames = params.leads.map((lead) => lead.authorName);
+    const authorProfileUrls = params.leads.map((lead) => lead.authorProfileUrl);
+    const groupNames = params.leads.map((lead) => lead.groupName ?? null);
+    const intents = params.leads.map((lead) => lead.intent);
+    const leadScores = params.leads.map((lead) => lead.leadScore);
+    const aiAnalyses = params.leads.map((lead) =>
+      lead.aiAnalysis ? JSON.stringify(lead.aiAnalysis) : null
+    );
+    const aiDraftReplies = params.leads.map((lead) => lead.aiDraftReply ?? null);
+
+    const rows = await sql`
+      WITH inserted AS (
+        INSERT INTO leads (
+          user_id, post_url, post_text, author_name, author_profile_url,
+          group_name, intent, lead_score, ai_analysis, ai_draft_reply
+        )
+        SELECT * FROM UNNEST(
+          ${userIds}::uuid[],
+          ${postUrls}::text[],
+          ${postTexts}::text[],
+          ${authorNames}::text[],
+          ${authorProfileUrls}::text[],
+          ${groupNames}::text[],
+          ${intents}::text[],
+          ${leadScores}::int[],
+          ${aiAnalyses}::jsonb[],
+          ${aiDraftReplies}::text[]
+        )
+        ON CONFLICT (user_id, post_url) DO NOTHING
+        RETURNING *
+      ),
+      usage_update AS (
+        UPDATE users
+        SET leads_found_this_month = leads_found_this_month + (SELECT COUNT(*) FROM inserted)
+        WHERE id = ${params.userId}
+        RETURNING id
+      )
+      SELECT * FROM inserted
+    `;
+
+    const created = rows.length;
+    return {
+      leads: rows.map((row) => rowToLead(row as LeadRow)),
+      created,
+      skipped: params.leads.length - created,
+    };
   },
 
   async update(id: string, data: Partial<{
